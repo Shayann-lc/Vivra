@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  XCODEGEN_VERSION: "2.46.0"
+  XCODEGEN_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+
+jobs:
+  checks:
+    name: Guards, format, core tests (Linux)
+    runs-on: ubuntu-24.04
+    container: swift:6.2-noble
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Guard checks
+        run: scripts/check-guards.sh
+
+      - name: swift-format lint
+        run: swift format lint --strict --recursive App AppTests Packages
+
+      - name: VivraCore tests
+        run: swift test --package-path Packages/VivraCore
+
+  ios:
+    name: Build and test (iOS Simulator)
+    runs-on: macos-26
+    needs: checks
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: |
+          curl -sSLf -o "$RUNNER_TEMP/xcodegen.zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          echo "${XCODEGEN_SHA256}  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Build and test
+        run: |
+          destination="$(scripts/sim-destination.sh)"
+          set -o pipefail
+          xcodebuild test \
+            -project Vivra.xcodeproj \
+            -scheme Vivra \
+            -destination "$destination" \
+            -resultBundlePath "$RUNNER_TEMP/Vivra.xcresult"
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vivra.xcresult
+          path: ${{ runner.temp }}/Vivra.xcresult
+          retention-days: 7

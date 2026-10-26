@@ -1,6 +1,6 @@
 # Vivra — Architecture and Phased Plan
 
-Status: **draft, awaiting owner approval.** Nothing is implemented until this is approved.
+Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phase 0 is in progress.
 
 ## 1. Decisions already made
 
@@ -10,7 +10,9 @@ Status: **draft, awaiting owner approval.** Nothing is implemented until this is
 | 2 | Apple Watch companion app | **Not in v1.** Watch data still arrives through HealthKit. |
 | 3 | Minimum iOS | **iOS 26.** Foundation Models and State of Mind are both available. |
 | 4 | Branching | Commit straight to `main`. |
-| 5 | Direct Strava API integration | **Recommend not building it.** See §8. Workouts that Strava writes to Apple Health are still read through HealthKit. |
+| 5 | Direct Strava API integration | **Not building it** (approved). See §8. Workouts that Strava writes to Apple Health are still read through HealthKit. |
+| 6 | Dependencies | GRDB.swift + SQLCipher.swift (app runtime), XcodeGen (dev only). GRDB is **vendored** in `Vendor/GRDB`, because its SQLCipher build under SwiftPM requires a fork with an edited manifest (see `Vendor/GRDB/VENDORED.md`). |
+| 7 | Writing back to HealthKit | Opt-in write of mood (State of Mind) and drinks (water, caffeine, alcohol), Phase 2. |
 
 ## 2. Principles, restated as engineering rules
 
@@ -65,7 +67,7 @@ VivraStore ──▶ InsightEngine.daily rollups ──▶ [Finding]  (numbers, 
 The requirement is Data Protection `complete` **plus** an encrypted store. SwiftData has no database-level encryption: it relies only on file protection. My recommendation:
 
 - **GRDB.swift with SQLCipher.** The 256-bit key is generated on first launch and stored in the Keychain with `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, so it is never in iCloud backups or device migrations. The database file is also set to `NSFileProtectionComplete`.
-- If you approve, I'll confirm exactly how SQLCipher is wired in (GRDB's SwiftPM SQLCipher support versus a pinned fork) in a Phase 0 spike before relying on it.
+- How SQLCipher is wired in: GRDB v7.11.1 is vendored with upstream's documented `GRDB+SQLCipher` manifest changes, against SQLCipher.swift 4.19.0 (pinned exactly). The key goes to SQLCipher in raw-key form (`x'…'`), which skips the passphrase KDF.
 - Fallback if you don't want the dependency: SwiftData with `complete` file protection, plus CryptoKit `AES.GCM` encryption of the sensitive columns (notes, mood text). This is weaker, because queries and indexes on encrypted fields stop working.
 
 Schema outline:
@@ -128,8 +130,9 @@ Every statistic is covered by unit tests with known answers, and every report ty
 ### Phase 0 — Foundations (no user-facing features)
 - Xcode project, local packages, iOS 26 deployment target, Swift 6 strict concurrency, `swift-format` config.
 - CI on GitHub Actions macOS runners: build, run unit tests, and the guard checks (no networking APIs, no `print`, no banned imports).
-- Spike: GRDB with SQLCipher opens, encrypts and migrates on a device.
-- **Done when:** CI is green on `main`, and an empty app launches on a simulator.
+- Spike: GRDB with SQLCipher opens, encrypts and migrates. Tests check that the file has no plaintext SQLite header or values, that a wrong key is refused, that the database reopens with the right key, and that the directory has `complete` protection.
+- **Done when:** CI is green on `main` (Linux checks, plus build and all tests on an iOS 26 simulator), and the placeholder app launches on a simulator and reports that secure storage is ready.
+- The owner should also run it once on a physical device, but that is not a gate.
 
 ### Phase 1 — The deliverable you specified
 - Onboarding: what Vivra is, the disclaimer (must be acknowledged), grouped HealthKit permission requests.

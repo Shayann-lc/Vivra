@@ -1,0 +1,8 @@
+// Shared build settings for the Vivra app. Values here are placeholders that
+// work for simulator builds; override them in Config/Local.xcconfig
+// (git-ignored) to sign for a device. See Config/Local.xcconfig.example.
+
+VIVRA_BUNDLE_ID = com.example.vivra
+DEVELOPMENT_TEAM =
+
+#include? "Local.xcconfig"

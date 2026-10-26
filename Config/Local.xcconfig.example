@@ -1,0 +1,3 @@
+// Copy to Config/Local.xcconfig (git-ignored) and fill in to run on a device.
+VIVRA_BUNDLE_ID = com.yourname.vivra
+DEVELOPMENT_TEAM = ABCDE12345
