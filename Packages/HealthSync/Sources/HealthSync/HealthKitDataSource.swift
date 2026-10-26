@@ -101,15 +101,15 @@ public final class HealthKitDataSource: HealthDataSource, @unchecked Sendable {
         for type in types {
             let sampleType = HealthKitMapping.sampleType(for: type)
             let query = HKObserverQuery(sampleType: sampleType, predicate: nil) { _, completion, error in
-                let completion = CompletionBox(completion)
+                let box = CompletionBox(completion)
                 if let error {
                     Log.sync.failure("Observer query failed", code: (error as NSError).code)
-                    completion.call()
+                    box.call()
                     return
                 }
                 Task {
                     await onChange(type)
-                    completion.call()
+                    box.call()
                 }
             }
             store.execute(query)

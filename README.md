@@ -5,6 +5,8 @@ activity, mood and nutrition data and explains them in plain language. All data
 stays on the device.
 
 - Plan and architecture: [`docs/PLAN.md`](docs/PLAN.md)
+- Writing rules: [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md)
+- Device test steps: [`docs/DEVICE_TEST.md`](docs/DEVICE_TEST.md)
 - Not medical advice. Vivra describes observed patterns only.
 
 ## Requirements
@@ -28,8 +30,10 @@ ID and team.
 ```
 App/                 SwiftUI app target
 AppTests/            Tests hosted in the app (real Keychain)
-Packages/VivraCore   Platform-independent code; builds and tests on Linux too
+Packages/VivraCore   Model, sync engine, insight engine, narrative rules; tests on Linux too
 Packages/VivraStore  Encrypted store: GRDB + SQLCipher, key in the Keychain
+Packages/HealthSync  HealthKit adapter (anchored queries, background delivery)
+Packages/Narrative   On-device Foundation Models narrator
 Vendor/GRDB          GRDB.swift built against SQLCipher (see VENDORED.md)
 Config/              xcconfig files
 scripts/             Guard checks, vendoring, CI helpers

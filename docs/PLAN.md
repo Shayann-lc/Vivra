@@ -1,6 +1,6 @@
 # Vivra — Architecture and Phased Plan
 
-Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phase 0 is done (CI green); Phase 1 is waiting for approval.
+Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phase 0 is done. Phase 1 is approved and in progress.
 
 ## 1. Decisions already made
 
@@ -26,21 +26,27 @@ Status: **approved** (all of §11, with bundle ID and team as placeholders until
 
 ```
 Vivra.xcodeproj  (app target, iOS 26)
-└── VivraApp                 SwiftUI app shell, navigation, app lock
-Packages/ (local Swift packages; everything testable lives here)
-├── VivraModel               Value types: Sample, SleepSession, Workout, LogEntry, Finding, …
-├── VivraStore               Encrypted database, migrations, repositories
-├── HealthSync               HealthKit wrapper: permissions, anchored queries, background delivery
-├── InsightEngine            Pure Swift statistics. No Apple frameworks beyond Foundation
-├── Narrative                Foundation Models prompts, style guide, output validator, template fallback
-├── Gamification             (Phase 3) streaks, XP, goals, achievements
-├── Norms                    (Phase 4) bundled reference norms with citations
-└── VivraUI                  Reusable SwiftUI views and Swift Charts components
+└── App/                     SwiftUI app: screens, AppModel, app lock, preferences
+Packages/
+├── VivraCore                Platform-independent; builds and tests on Linux too
+│   ├── VivraLogging         StaticString-only Log wrapper
+│   ├── VivraModel           Value types, injected Clock and DayCalendar
+│   ├── SyncCore             SyncEngine and the HealthDataSource/SyncStore protocols
+│   ├── InsightEngine        Sleep nights, daily metrics, findings, dashboard snapshot
+│   └── NarrativeCore        Style rules, validator, templates, prompts, composer
+├── VivraStore               Encrypted database, migrations, HealthRepository (Apple only)
+├── HealthSync               HealthKit adapter: anchored queries, observers (Apple only)
+├── Narrative                Foundation Models narrator (Apple only)
+├── Gamification             (Phase 3)
+└── Norms                    (Phase 4)
 ```
 
 How the pieces depend on each other:
-`VivraApp → VivraUI → {Narrative, InsightEngine, HealthSync, VivraStore} → VivraModel`.
-`InsightEngine` depends only on `VivraModel`. That keeps it deterministic and quick to unit test.
+`App → {Narrative, HealthSync, VivraStore} → VivraCore`. Every rule that matters (sync
+correctness, statistics, what the model may say) is in `VivraCore`, which has no Apple
+dependencies, so it's tested on Linux as well as in CI. In Phase 1 the views live in the
+app target, not a separate `VivraUI` package; they can be split out when a widget or
+another target needs them.
 
 ### 3.1 Data flow
 
@@ -98,14 +104,14 @@ Every migration is written as a numbered `DatabaseMigrator` step with a test.
 ## 5. Insight engine (deterministic Swift)
 
 - **Daily rollups:** one row per local calendar day. Sleep is attributed to the day you wake up. Each row holds sleep duration and stages, resting HR, HRV (SDNN) average, steps, active energy, exercise minutes, alcohol, caffeine, mood and energy logs.
-- **Correlations:** Spearman's ρ is the default, because it handles outliers and non-normal data. Each pair records n, ρ and a 95% confidence interval (Fisher z).
+- **Correlations (Phase 2):** Spearman's ρ is the default, because it handles outliers and non-normal data. Each pair records n, ρ and a 95% confidence interval (Fisher z).
 - **Lagged effects:** the same calculation applied to day *t* → day *t+1* pairs, for example alcohol to next-night HRV, or late workout to sleep latency.
-- **Group differences:** for example, sleep under 6 h versus 6 h or more, compared on next-day resting HR. The result is a difference of medians with a bootstrap confidence interval using a fixed seed, so it is deterministic.
+- **Group differences:** for example, nights shorter than the person's median compared with longer ones, on that day's resting HR. The result is a difference of medians, with a bootstrap 95% interval using a fixed seed (so it is deterministic) and a **Mann–Whitney U** p-value (normal approximation with tie and continuity corrections, checked against scipy). A permutation test on the median difference was tried first. It had almost no power on tied data such as whole-minute sleep, so it was replaced.
 - **Gates before anything is shown to the user:**
   - n ≥ 14 paired days, and n ≥ 7 in each group for group differences.
-  - |ρ| ≥ 0.3 or an effect above a per-metric minimum.
-  - Benjamini–Hochberg false-discovery control across all the pairs tested in a report.
-- **Confidence levels:** low, medium or high, based on n, the width of the confidence interval and how stable the result stays across the window.
+  - |ρ| ≥ 0.3 (correlations), or a difference at least a per-metric minimum (1 bpm resting HR, 15 min sleep) with a 95% interval that excludes zero.
+  - Benjamini–Hochberg false-discovery control (q = 0.10) across all the pairs tested in a report.
+- **Confidence levels:** high when the smaller group has at least 20 days and the adjusted p ≤ 0.01, medium for at least 10 days and p ≤ 0.05, otherwise low. Stability across the window is planned for Phase 2.
 - **Trends:** Theil–Sen slope over 28 or 90 days.
 - **Anomalies:** robust z-score (median and MAD) against the user's own 28-day baseline.
 - **Wording:** `Finding` is a structured value carrying metric IDs, direction, numbers, n, confidence and window. It never contains prose. Causal words are banned at the type level, because the narrative layer only receives "associated with" templates.
@@ -139,7 +145,10 @@ Every statistic is covered by unit tests with known answers, and every report ty
 - HealthSync for **sleep** (stages, time in bed), **heart** (HR, resting HR, HRV SDNN, walking HR average, VO2 max) and **workouts** (type, duration, energy, distance; no routes yet). Anchored queries and background delivery.
 - Encrypted store with migrations.
 - Dashboard: a card per data family for the last 7 days (sleep duration and stages, resting HR and HRV trend, workouts list) using Swift Charts.
-- Weekly summary: Phase 1 engine subset (weekly averages, change from the previous week, one or two simple lagged comparisons when the gates pass) → Foundation Models narrative → validator → template fallback.
+- Weekly summary: Phase 1 engine subset → Foundation Models narrative → validator → template fallback. The subset is weekly averages over the last 7 complete days next to the 7 before (sleep, resting HR, HRV, walking HR, VO2 max, workout count and minutes; a metric needs 3 days), plus two lagged patterns over 90 days when the gates pass:
+  - a night shorter than the person's median, compared on that day's resting HR;
+  - a workout day (20 minutes or more) against a day with none, compared on the following night's sleep.
+- Strava-sourced workouts are left out of reports (and so out of the model) by default, and kept on the dashboard. `SourcePolicy.includeAll` switches this (§8).
 - Settings: app lock, delete everything, disclaimer.
 - `docs/STYLE_GUIDE.md`.
 - **Definition of done:**
