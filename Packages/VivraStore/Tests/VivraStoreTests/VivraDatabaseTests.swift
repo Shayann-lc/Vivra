@@ -28,9 +28,8 @@ private func makeTemporaryDirectory() throws -> URL {
         let database = try VivraDatabase.open(in: directory, keyProvider: StaticKeyProvider(key: makeKey(1)))
 
         #expect(try database.appliedMigrations() == ["v1_settings"])
-        try database.writer.read { db in
-            #expect(try db.tableExists("setting"))
-        }
+        let hasSettingTable = try database.writer.read { db in try db.tableExists("setting") }
+        #expect(hasSettingTable)
     }
 
     @Test func fileIsNotPlaintextSQLite() throws {
@@ -41,7 +40,7 @@ private func makeTemporaryDirectory() throws -> URL {
         try database.writer.write { db in
             try db.execute(sql: "INSERT INTO setting (key, value) VALUES ('probe', 'needle-value')")
         }
-        try database.writer.writeWithoutTransaction { db in
+        _ = try database.writer.writeWithoutTransaction { db in
             try db.checkpoint(.truncate)
         }
 
