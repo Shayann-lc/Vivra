@@ -5,8 +5,9 @@ and the definition of done for each phase.
 
 ## Current phase
 
-**Phase 0 (foundations)** is in progress. Do not start Phase 1 until the owner
-approves it.
+**Phase 0 (foundations)** is done (CI green on `main`). The owner still needs to
+do the device run, but it doesn't gate anything. **Phase 1 needs the owner's
+explicit approval before it starts.**
 
 ## Hard rules
 

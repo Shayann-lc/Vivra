@@ -1,6 +1,6 @@
 # Vivra — Architecture and Phased Plan
 
-Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phase 0 is in progress.
+Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phase 0 is done (CI green); Phase 1 is waiting for approval.
 
 ## 1. Decisions already made
 
