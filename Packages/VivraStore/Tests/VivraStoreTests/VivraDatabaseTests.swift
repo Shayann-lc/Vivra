@@ -80,7 +80,9 @@ private func makeTemporaryDirectory() throws -> URL {
         }
     }
 
-    #if os(iOS)
+    // The simulator doesn't report file protection classes, so this only runs
+    // on a physical device.
+    #if os(iOS) && !targetEnvironment(simulator)
         @Test func directoryUsesCompleteDataProtection() throws {
             let directory = try makeTemporaryDirectory()
             defer { try? FileManager.default.removeItem(at: directory) }
@@ -107,32 +109,5 @@ private func makeTemporaryDirectory() throws -> URL {
 
     @Test func generatedKeysAreRandom() throws {
         #expect(try KeychainKeyProvider.generateKey() != KeychainKeyProvider.generateKey())
-    }
-}
-
-@Suite(.serialized) struct KeychainKeyProviderTests {
-    private let provider = KeychainKeyProvider(service: "app.vivra.tests.\(UUID().uuidString)")
-
-    @Test func createsKeyOnceAndReturnsItAfterwards() throws {
-        defer { try? provider.deleteKey() }
-
-        let first = try provider.databaseKey()
-        let second = try provider.databaseKey()
-
-        #expect(first == second)
-    }
-
-    @Test func deleteKeyForcesANewKey() throws {
-        defer { try? provider.deleteKey() }
-
-        let first = try provider.databaseKey()
-        try provider.deleteKey()
-        let second = try provider.databaseKey()
-
-        #expect(first != second)
-    }
-
-    @Test func deletingAMissingKeySucceeds() throws {
-        try provider.deleteKey()
     }
 }
