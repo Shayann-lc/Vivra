@@ -27,6 +27,9 @@ public struct Log: Sendable {
 
     public static let app = Log(category: "app")
     public static let store = Log(category: "store")
+    public static let sync = Log(category: "sync")
+    public static let insights = Log(category: "insights")
+    public static let narrative = Log(category: "narrative")
 
     /// Records that something happened.
     public func event(_ message: StaticString) {

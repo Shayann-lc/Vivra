@@ -22,10 +22,23 @@ let package = Package(
             name: "VivraStore",
             dependencies: [
                 .product(name: "VivraLogging", package: "VivraCore"),
+                .product(name: "VivraModel", package: "VivraCore"),
+                .product(name: "SyncCore", package: "VivraCore"),
+                .product(name: "InsightEngine", package: "VivraCore"),
+                .product(name: "NarrativeCore", package: "VivraCore"),
                 .product(name: "GRDB", package: "GRDB"),
             ]
         ),
-        .testTarget(name: "VivraStoreTests", dependencies: ["VivraStore"]),
+        .testTarget(
+            name: "VivraStoreTests",
+            dependencies: [
+                "VivraStore",
+                .product(name: "VivraModel", package: "VivraCore"),
+                .product(name: "SyncCore", package: "VivraCore"),
+                .product(name: "InsightEngine", package: "VivraCore"),
+                .product(name: "NarrativeCore", package: "VivraCore"),
+            ]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

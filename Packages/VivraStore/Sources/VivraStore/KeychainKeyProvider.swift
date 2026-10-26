@@ -46,6 +46,21 @@ public struct KeychainKeyProvider: DatabaseKeyProvider {
         }
     }
 
+    /// Removes the key. Any database encrypted with it becomes permanently
+    /// unreadable.
+    public func deleteKey() throws {
+        let status = SecItemDelete(baseQuery as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            Log.store.failure("Keychain delete failed", code: Int(status))
+            throw DatabaseKeyError.keychain(status)
+        }
+    }
+
+    /// Whether a key is stored, without creating one.
+    public func hasStoredKey() throws -> Bool {
+        try readKey() != nil
+    }
+
     private var baseQuery: [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,

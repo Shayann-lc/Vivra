@@ -27,6 +27,10 @@ packages:
     path: Packages/VivraCore
   VivraStore:
     path: Packages/VivraStore
+  HealthSync:
+    path: Packages/HealthSync
+  Narrative:
+    path: Packages/Narrative
 
 fileGroups:
   - Config
@@ -42,13 +46,31 @@ targets:
     dependencies:
       - package: VivraCore
         product: VivraLogging
+      - package: VivraCore
+        product: VivraModel
+      - package: VivraCore
+        product: SyncCore
+      - package: VivraCore
+        product: InsightEngine
+      - package: VivraCore
+        product: NarrativeCore
       - package: VivraStore
         product: VivraStore
+      - package: HealthSync
+        product: HealthSync
+      - package: Narrative
+        product: Narrative
+      - sdk: HealthKit.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(VIVRA_BUNDLE_ID)
+        CODE_SIGN_ENTITLEMENTS: App/Vivra.entitlements
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Vivra
+        INFOPLIST_KEY_NSHealthShareUsageDescription: >-
+          Vivra reads your sleep, heart and workout data to show your trends and find patterns.
+          Your data stays on this iPhone.
+        INFOPLIST_KEY_NSFaceIDUsageDescription: Vivra uses Face ID to unlock the app when App Lock is on.
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
@@ -79,4 +101,9 @@ schemes:
       targets:
         - VivraTests
         - package: VivraCore/VivraLoggingTests
+        - package: VivraCore/VivraModelTests
+        - package: VivraCore/SyncCoreTests
+        - package: VivraCore/InsightEngineTests
+        - package: VivraCore/NarrativeCoreTests
         - package: VivraStore/VivraStoreTests
+        - package: HealthSync/HealthSyncTests

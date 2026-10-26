@@ -1,13 +1,30 @@
 import SwiftUI
+import UIKit
 
 @main
 struct VivraApp: App {
-    @State private var model = AppModel()
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
         WindowGroup {
-            RootView(model: model)
-                .task { await model.start() }
+            RootView(model: delegate.model)
         }
+    }
+}
+
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    let model = AppModel.live()
+
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        // HealthKit observers must be registered at launch so background
+        // deliveries reach the app.
+        if model.preferences.onboardingCompleted {
+            model.startObservingHealth()
+        }
+        Task { await model.start() }
+        return true
     }
 }

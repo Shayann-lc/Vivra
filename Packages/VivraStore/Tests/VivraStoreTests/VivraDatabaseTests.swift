@@ -4,16 +4,16 @@ import Testing
 
 @testable import VivraStore
 
-private struct StaticKeyProvider: DatabaseKeyProvider {
+struct StaticKeyProvider: DatabaseKeyProvider {
     let key: DatabaseKey
     func databaseKey() throws -> DatabaseKey { key }
 }
 
-private func makeKey(_ byte: UInt8) throws -> DatabaseKey {
+func makeKey(_ byte: UInt8) throws -> DatabaseKey {
     try DatabaseKey(bytes: Data(repeating: byte, count: DatabaseKey.byteCount))
 }
 
-private func makeTemporaryDirectory() throws -> URL {
+func makeTemporaryDirectory() throws -> URL {
     let url = FileManager.default.temporaryDirectory
         .appendingPathComponent("VivraStoreTests-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
@@ -27,7 +27,7 @@ private func makeTemporaryDirectory() throws -> URL {
 
         let database = try VivraDatabase.open(in: directory, keyProvider: StaticKeyProvider(key: makeKey(1)))
 
-        #expect(try database.appliedMigrations() == ["v1_settings"])
+        #expect(try database.appliedMigrations() == ["v1_settings", "v2_health"])
         let hasSettingTable = try database.writer.read { db in try db.tableExists("setting") }
         #expect(hasSettingTable)
     }
@@ -67,6 +67,17 @@ private func makeTemporaryDirectory() throws -> URL {
             try String.fetchOne(db, sql: "SELECT value FROM setting WHERE key = 'k'")
         }
         #expect(value == "v")
+    }
+
+    @Test func destroyRemovesTheFiles() throws {
+        let directory = try makeTemporaryDirectory()
+        let database = try VivraDatabase.open(in: directory, keyProvider: StaticKeyProvider(key: makeKey(7)))
+        try database.close()
+
+        try VivraDatabase.destroy(in: directory)
+
+        #expect(!FileManager.default.fileExists(atPath: directory.path))
+        try VivraDatabase.destroy(in: directory)  // already gone: no error
     }
 
     @Test func refusesWrongKey() throws {

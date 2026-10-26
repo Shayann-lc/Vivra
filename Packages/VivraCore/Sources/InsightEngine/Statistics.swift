@@ -1,0 +1,108 @@
+import Foundation
+
+/// Deterministic statistics helpers. The one random procedure (the
+/// bootstrap) takes an explicit seed, so the same data always produces the
+/// same report.
+enum Statistics {
+    static func mean(_ values: [Double]) -> Double? {
+        values.isEmpty ? nil : values.reduce(0, +) / Double(values.count)
+    }
+
+    static func median(_ values: [Double]) -> Double? {
+        guard !values.isEmpty else { return nil }
+        let sorted = values.sorted()
+        let middle = sorted.count / 2
+        return sorted.count.isMultiple(of: 2) ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle]
+    }
+
+    /// Linear-interpolated percentile, `p` in 0...1.
+    static func percentile(_ sortedValues: [Double], _ p: Double) -> Double {
+        precondition(!sortedValues.isEmpty)
+        let position = p * Double(sortedValues.count - 1)
+        let lower = Int(position.rounded(.down))
+        let upper = min(lower + 1, sortedValues.count - 1)
+        let fraction = position - Double(lower)
+        return sortedValues[lower] + (sortedValues[upper] - sortedValues[lower]) * fraction
+    }
+
+    /// Two-sided Mann–Whitney U test (normal approximation with tie and
+    /// continuity corrections). Rank-based, so it suits small, skewed and
+    /// heavily tied samples, and it needs no random numbers.
+    static func mannWhitneyPValue(_ a: [Double], _ b: [Double]) -> Double {
+        let n1 = Double(a.count)
+        let n2 = Double(b.count)
+        let n = n1 + n2
+        guard n1 > 0, n2 > 0 else { return 1 }
+
+        // Average ranks, with tie groups recorded for the variance correction.
+        let pooled = (a.map { ($0, true) } + b.map { ($0, false) }).sorted { $0.0 < $1.0 }
+        var rankSumA = 0.0
+        var tieCorrection = 0.0
+        var index = 0
+        while index < pooled.count {
+            var end = index
+            while end + 1 < pooled.count && pooled[end + 1].0 == pooled[index].0 { end += 1 }
+            let averageRank = Double(index + end) / 2 + 1
+            let ties = Double(end - index + 1)
+            tieCorrection += ties * ties * ties - ties
+            for position in index...end where pooled[position].1 { rankSumA += averageRank }
+            index = end + 1
+        }
+
+        let u = rankSumA - n1 * (n1 + 1) / 2
+        let mean = n1 * n2 / 2
+        let variance = n1 * n2 / 12 * ((n + 1) - tieCorrection / (n * (n - 1)))
+        guard variance > 0 else { return 1 }
+        let z = max(0, abs(u - mean) - 0.5) / variance.squareRoot()
+        return min(1, erfc(z / 2.0.squareRoot()))
+    }
+
+    /// Percentile bootstrap 95% interval for median(a) − median(b).
+    static func bootstrapDifferenceInterval(_ a: [Double], _ b: [Double], resamples: Int, seed: UInt64)
+        -> ClosedRange<Double>
+    {
+        var generator = SplitMix64(seed: seed)
+        var differences: [Double] = []
+        differences.reserveCapacity(resamples)
+        for _ in 0..<resamples {
+            let resampledA = (0..<a.count).map { _ in a[Int(generator.next() % UInt64(a.count))] }
+            let resampledB = (0..<b.count).map { _ in b[Int(generator.next() % UInt64(b.count))] }
+            differences.append(median(resampledA)! - median(resampledB)!)
+        }
+        differences.sort()
+        return percentile(differences, 0.025)...percentile(differences, 0.975)
+    }
+
+    /// Benjamini–Hochberg adjusted p-values, in the input order.
+    static func benjaminiHochberg(_ pValues: [Double]) -> [Double] {
+        let count = pValues.count
+        guard count > 0 else { return [] }
+        let order = pValues.indices.sorted { pValues[$0] < pValues[$1] }
+        var adjusted = [Double](repeating: 1, count: count)
+        var runningMinimum = 1.0
+        for rank in stride(from: count, through: 1, by: -1) {
+            let index = order[rank - 1]
+            runningMinimum = min(runningMinimum, pValues[index] * Double(count) / Double(rank))
+            adjusted[index] = runningMinimum
+        }
+        return adjusted
+    }
+}
+
+/// A small, fast, seedable generator (Steele et al., 2014). Not for
+/// cryptography; used only to make resampling reproducible.
+struct SplitMix64: RandomNumberGenerator {
+    private var state: UInt64
+
+    init(seed: UInt64) {
+        state = seed
+    }
+
+    mutating func next() -> UInt64 {
+        state &+= 0x9E37_79B9_7F4A_7C15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+        return z ^ (z >> 31)
+    }
+}

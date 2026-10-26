@@ -12,11 +12,23 @@ let package = Package(
         .macOS(.v26),
     ],
     products: [
-        .library(name: "VivraLogging", targets: ["VivraLogging"])
+        .library(name: "VivraLogging", targets: ["VivraLogging"]),
+        .library(name: "VivraModel", targets: ["VivraModel"]),
+        .library(name: "SyncCore", targets: ["SyncCore"]),
+        .library(name: "InsightEngine", targets: ["InsightEngine"]),
+        .library(name: "NarrativeCore", targets: ["NarrativeCore"]),
     ],
     targets: [
         .target(name: "VivraLogging"),
+        .target(name: "VivraModel"),
+        .target(name: "SyncCore", dependencies: ["VivraModel", "VivraLogging"]),
+        .target(name: "InsightEngine", dependencies: ["VivraModel"]),
+        .target(name: "NarrativeCore", dependencies: ["InsightEngine", "VivraModel", "VivraLogging"]),
         .testTarget(name: "VivraLoggingTests", dependencies: ["VivraLogging"]),
+        .testTarget(name: "VivraModelTests", dependencies: ["VivraModel"]),
+        .testTarget(name: "SyncCoreTests", dependencies: ["SyncCore", "VivraModel"]),
+        .testTarget(name: "InsightEngineTests", dependencies: ["InsightEngine", "VivraModel"]),
+        .testTarget(name: "NarrativeCoreTests", dependencies: ["NarrativeCore", "InsightEngine", "VivraModel"]),
     ],
     swiftLanguageModes: [.v6]
 )

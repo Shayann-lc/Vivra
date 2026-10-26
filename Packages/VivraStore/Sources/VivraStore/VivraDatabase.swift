@@ -52,6 +52,21 @@ public final class VivraDatabase: Sendable {
         try writer.read { db in try Migrations.migrator.appliedMigrations(db) }
     }
 
+    /// Closes every connection. The database can't be used afterwards.
+    public func close() throws {
+        if let pool = writer as? DatabasePool {
+            try pool.close()
+        }
+    }
+
+    /// Deletes the database files. Call `close()` on any open instance first.
+    public static func destroy(in directory: URL) throws {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: directory.path) else { return }
+        try fileManager.removeItem(at: directory)
+        Log.store.event("Database deleted")
+    }
+
     private static func prepareDirectory(_ directory: URL) throws {
         let fileManager = FileManager.default
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
