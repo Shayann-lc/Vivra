@@ -1,17 +1,47 @@
 import Charts
+import Gamification
 import InsightEngine
 import NarrativeCore
 import SwiftUI
 import VivraModel
 
-struct DashboardView: View {
+/// Home. Numbers first and compact, no composite scores, no generated text
+/// (docs/UX_RESEARCH.md).
+struct TodayView: View {
     let model: AppModel
+    let openTab: (MainTabView.Selection) -> Void
     @State private var reviewingPermissions = false
+    @State private var customizing = false
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    if !model.pendingPermissionGroups.isEmpty {
+                        NewPermissionsCard { reviewingPermissions = true }
+                    }
+                    if let progress = model.progress, progress.isWelcomeBack {
+                        Label(ProgressCopy.welcomeBack, systemImage: "hand.wave")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                            .background(.tint.opacity(0.12), in: .rect(cornerRadius: 16))
+                    }
+                    GlanceCard(glance: model.glance)
+                    if let progress = model.progress {
+                        ProgressStrip(progress: progress) { openTab(.progress) }
+                    }
+                    Button {
+                        openTab(.log)
+                    } label: {
+                        Label("Quick Log", systemImage: "plus.circle.fill")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    if let finding = model.glance?.worthNoticing {
+                        WorthNoticingCard(finding: finding) { openTab(.insights) }
+                    }
                     if model.lastSyncHadFailures {
                         Label(
                             "Some Health data couldn't be read. Vivra will try again next time.",
@@ -20,16 +50,17 @@ struct DashboardView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     }
-                    if !model.pendingPermissionGroups.isEmpty {
-                        NewPermissionsCard { reviewingPermissions = true }
-                    }
                     if let snapshot = model.dashboard {
-                        TodayCard(snapshot: snapshot)
-                        SleepCard(snapshot: snapshot)
-                        HeartCard(snapshot: snapshot, recordings: model.heartRecordings)
-                        ActivityCard(snapshot: snapshot)
-                        WorkoutsCard(snapshot: snapshot)
-                        BodyCard(snapshot: snapshot)
+                        ForEach(model.preferences.visibleTodayCards) { card in
+                            switch card {
+                            case .sleep: SleepCard(snapshot: snapshot)
+                            case .heart: HeartCard(snapshot: snapshot, recordings: model.heartRecordings)
+                            case .activity: ActivityCard(snapshot: snapshot)
+                            case .workouts: WorkoutsCard(snapshot: snapshot)
+                            case .logged: TodayLoggedCard(snapshot: snapshot)
+                            case .body: BodyCard(snapshot: snapshot)
+                            }
+                        }
                     } else {
                         ProgressView()
                     }
@@ -39,17 +70,137 @@ struct DashboardView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Last 7 Days")
+            .navigationTitle("Today")
             .refreshable { await model.sync() }
-            .sheet(isPresented: $reviewingPermissions) { PermissionReviewView(model: model) }
             .toolbar {
-                if model.isSyncing { ProgressView() }
+                ToolbarItem(placement: .topBarLeading) {
+                    if model.isSyncing { ProgressView() }
+                }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button("Customize", systemImage: "slider.horizontal.3") { customizing = true }
+                    Button("Settings", systemImage: "gearshape") { showingSettings = true }
+                }
+            }
+            .navigationDestination(for: Metric.self) { metric in
+                MetricDetailView(model: model, metric: metric)
+            }
+            .sheet(isPresented: $reviewingPermissions) { PermissionReviewView(model: model) }
+            .sheet(isPresented: $customizing) { CardEditorView(preferences: model.preferences) }
+            .sheet(isPresented: $showingSettings) { SettingsView(model: model) }
+        }
+    }
+}
+
+/// The latest values next to the person's usual. Each row opens 28 days.
+private struct GlanceCard: View {
+    let glance: TodayGlance?
+
+    var body: some View {
+        Card(title: "At a glance", symbol: "list.bullet.rectangle") {
+            if let rows = glance?.rows, !rows.isEmpty {
+                ForEach(rows) { row in
+                    NavigationLink(value: row.metric) {
+                        GlanceRowView(row: row)
+                    }
+                    .buttonStyle(.plain)
+                    if row.id != rows.last?.id { Divider() }
+                }
+            } else {
+                EmptyCardText(text: "No recent sleep, heart or step data yet.")
             }
         }
     }
 }
 
-private struct Card<Content: View>: View {
+private struct GlanceRowView: View {
+    let row: TodayGlance.Row
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(MetricDescriptions.title(row.metric))
+                    .font(.subheadline)
+                Text(caption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(FindingFormatter.format(row.value, row.metric.unit))
+                    .font(.body.weight(.semibold).monospacedDigit())
+                if let usual = row.usual {
+                    Text("usual \(FindingFormatter.format(usual, row.metric.unit))")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var caption: String {
+        if row.isSoFar { return "So far today" }
+        if row.metric == .sleepDuration { return row.daysAgo == 0 ? "Last night" : "The night before" }
+        return row.daysAgo == 0 ? "Today" : "Yesterday"
+    }
+}
+
+/// One line: today's goal, the run, the level. Opens Progress.
+private struct ProgressStrip: View {
+    let progress: ProgressSnapshot
+    let open: () -> Void
+
+    var body: some View {
+        Button(action: open) {
+            HStack(spacing: 12) {
+                Image(systemName: progress.goalMetToday ? "checkmark.circle.fill" : "circle.dashed")
+                    .foregroundStyle(progress.goalMetToday ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(ProgressCopy.goal(progress))
+                        .font(.subheadline.weight(.semibold))
+                    Text("\(ProgressCopy.run(progress)) · Level \(progress.level)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding()
+            .background(.background.secondary, in: .rect(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// The single most notable finding, in template wording. Opens Insights.
+private struct WorthNoticingCard: View {
+    let finding: Finding
+    let open: () -> Void
+
+    var body: some View {
+        Button(action: open) {
+            Card(title: "Worth noticing", symbol: "eye") {
+                Text(TemplateRenderer.sentence(for: finding))
+                    .font(.subheadline)
+                    .multilineTextAlignment(.leading)
+                if finding.suggestProfessional {
+                    Label(Copy.professionalNote, systemImage: "info.circle")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct Card<Content: View>: View {
     let title: String
     let symbol: String
     @ViewBuilder let content: Content
@@ -66,7 +217,7 @@ private struct Card<Content: View>: View {
     }
 }
 
-private struct EmptyCardText: View {
+struct EmptyCardText: View {
     let text: String
 
     var body: some View {
@@ -235,12 +386,12 @@ private struct NewPermissionsCard: View {
     }
 }
 
-private struct TodayCard: View {
+private struct TodayLoggedCard: View {
     let snapshot: DashboardSnapshot
 
     var body: some View {
         if !snapshot.todayLogged.isEmpty || !snapshot.todayIntake.isEmpty {
-            Card(title: "Today", symbol: "sun.max") {
+            Card(title: "Logged today", symbol: "sun.max") {
                 let items = rows
                 ForEach(items, id: \.0) { label, value in
                     LabeledContent(label, value: value)

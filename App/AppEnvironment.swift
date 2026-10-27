@@ -18,6 +18,7 @@ struct AppEnvironment {
     /// Samples with this source were written by Vivra (write-back) and are
     /// ignored when read back.
     var ownBundleIdentifier: String?
+    var reminders: (any ReminderScheduling)?
 
     static var live: AppEnvironment {
         AppEnvironment(
@@ -27,7 +28,8 @@ struct AppEnvironment {
             clock: SystemClock(),
             calendar: { DayCalendar(Calendar.autoupdatingCurrent) },
             makeNarrator: { FoundationModelsNarrator.isAvailable ? FoundationModelsNarrator() : nil },
-            ownBundleIdentifier: Bundle.main.bundleIdentifier
+            ownBundleIdentifier: Bundle.main.bundleIdentifier,
+            reminders: NotificationReminderScheduler()
         )
     }
 }
@@ -39,7 +41,8 @@ extension AppEnvironment {
         directory: URL,
         keychainService: String,
         now: Date,
-        timeZoneIdentifier: String = "UTC"
+        timeZoneIdentifier: String = "UTC",
+        reminders: (any ReminderScheduling)? = nil
     ) -> AppEnvironment {
         let calendar = DayCalendar(timeZone: TimeZone(identifier: timeZoneIdentifier) ?? .gmt)
         return AppEnvironment(
@@ -49,7 +52,8 @@ extension AppEnvironment {
             clock: FixedClock(now),
             calendar: { calendar },
             makeNarrator: { nil },
-            ownBundleIdentifier: "app.vivra.isolated"
+            ownBundleIdentifier: "app.vivra.isolated",
+            reminders: reminders
         )
     }
 }

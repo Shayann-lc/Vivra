@@ -26,6 +26,7 @@ let package = Package(
                 .product(name: "SyncCore", package: "VivraCore"),
                 .product(name: "InsightEngine", package: "VivraCore"),
                 .product(name: "NarrativeCore", package: "VivraCore"),
+                .product(name: "Gamification", package: "VivraCore"),
                 .product(name: "GRDB", package: "GRDB"),
             ]
         ),
@@ -37,6 +38,7 @@ let package = Package(
                 .product(name: "SyncCore", package: "VivraCore"),
                 .product(name: "InsightEngine", package: "VivraCore"),
                 .product(name: "NarrativeCore", package: "VivraCore"),
+                .product(name: "Gamification", package: "VivraCore"),
             ]
         ),
     ],

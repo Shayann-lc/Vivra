@@ -1,4 +1,5 @@
 import Foundation
+import Gamification
 import HealthSync
 import InsightEngine
 import NarrativeCore
@@ -27,6 +28,9 @@ struct QuickLogDraft: Equatable {
     var drinks: [Drink: Int] = [:]
     var meal = false
     var note = ""
+    /// Nil logs "now". Otherwise earlier today or yesterday
+    /// (`AppModel.backfillRange`).
+    var timestamp: Date?
 
     var isEmpty: Bool {
         mood == nil && energy == nil && stress == nil && drinks.values.allSatisfy { $0 == 0 } && !meal
@@ -91,6 +95,12 @@ final class AppModel {
     private(set) var isSyncing = false
     private(set) var lastSyncHadFailures = false
     private(set) var lastDeletionReport: DeletionReport?
+    private(set) var progress: ProgressSnapshot?
+    private(set) var glance: TodayGlance?
+    /// Shown briefly after a Quick Log save.
+    var saveMessage: String?
+    /// Offer a daily reminder (once, after the first save).
+    var offerReminder = false
     /// Set when a widget, control or shortcut asks for Quick Log.
     var quickLogRequested = false
 
@@ -102,6 +112,9 @@ final class AppModel {
     @ObservationIgnored private var repository: HealthRepository?
     @ObservationIgnored private var syncEngine: SyncEngine?
     @ObservationIgnored private var startTask: Task<Void, Never>?
+    /// The last 90+ days, loaded once per refresh and shared by patterns, the
+    /// glance and metric detail.
+    @ObservationIgnored private var analysisCache: HealthDataset?
 
     init(environment: AppEnvironment, defaults: UserDefaults, defaultsDomain: String?) {
         self.environment = environment
@@ -203,7 +216,11 @@ final class AppModel {
 
     /// Records that the person saw the group, whether they allowed it or not.
     func markRequested(_ group: PermissionGroup) {
+        let hadPending = !pendingPermissionGroups.isEmpty
         preferences.requestedPermissionRevisions[group.rawValue] = group.revision
+        if hadPending && pendingPermissionGroups.isEmpty {
+            Task { await record(.answeredAllPermissions) }
+        }
     }
 
     func completeOnboarding() async {
@@ -244,7 +261,8 @@ final class AppModel {
     func refresh() async {
         await refreshDashboard()
         await refreshTodayLogs()
-        await refreshPatterns()
+        await refreshAnalysis()
+        await refreshProgress()
     }
 
     func refreshDashboard() async {
@@ -283,18 +301,37 @@ final class AppModel {
         )
     }
 
-    func refreshPatterns() async {
+    /// Reloads the analysis window and everything computed from it.
+    func refreshAnalysis() async {
         do {
             guard let dataset = try await analysisDataset() else { return }
-            patterns = PatternList.build(
-                dataset,
-                clock: environment.clock,
-                calendar: environment.calendar(),
-                sourcePolicy: reportPolicy
-            )
+            analysisCache = dataset
+            let clock = environment.clock
+            let calendar = environment.calendar()
+            patterns = PatternList.build(dataset, clock: clock, calendar: calendar, sourcePolicy: reportPolicy)
+            glance = TodayGlance.build(dataset, clock: clock, calendar: calendar, sourcePolicy: reportPolicy)
         } catch {
-            Log.app.failure("Pattern load failed", code: (error as NSError).code)
+            Log.app.failure("Analysis load failed", code: (error as NSError).code)
         }
+    }
+
+    /// The last 28 days of a metric, from the cached analysis window.
+    func history(_ metric: Metric) -> MetricHistory? {
+        guard let analysisCache else { return nil }
+        return MetricHistory.build(
+            metric,
+            dataset: analysisCache,
+            clock: environment.clock,
+            calendar: environment.calendar(),
+            sourcePolicy: dashboardPolicy
+        )
+    }
+
+    func noteViewedPatterns() async {
+        guard progress?.achievements.first(where: { $0.achievement == .patternSpotter })?.isUnlocked != true else {
+            return
+        }
+        await record(.viewedPatterns)
     }
 
     // MARK: Reports
@@ -326,12 +363,109 @@ final class AppModel {
             )
             try await repository.saveReport(stored)
             latestReports[kind] = stored
+            await record(kind == .weekly ? .createdWeeklySummary : .createdCheckIn)
         } catch {
             Log.app.failure("Report failed", code: (error as NSError).code)
         }
     }
 
+    // MARK: Progress
+
+    func refreshProgress() async {
+        guard let repository else { return }
+        do {
+            async let logs = repository.allLogs()
+            async let goals = repository.goalChanges()
+            async let events = repository.events()
+            progress = ProgressEngine.build(
+                logs: try await logs,
+                goals: try await goals,
+                events: try await events,
+                clock: environment.clock,
+                calendar: environment.calendar()
+            )
+        } catch {
+            Log.app.failure("Progress load failed", code: (error as NSError).code)
+        }
+        await scheduleReminders()
+    }
+
+    /// Sets the daily goal from today onwards; past days keep theirs.
+    func setGoal(_ target: Int) async {
+        guard let repository, ProgressRules.targetRange.contains(target) else { return }
+        do {
+            try await repository.setGoal(target, from: environment.calendar().day(environment.clock.now))
+        } catch {
+            Log.app.failure("Goal save failed", code: (error as NSError).code)
+        }
+        await refreshProgress()
+    }
+
+    private func record(_ kind: AppEventKind) async {
+        guard let repository else { return }
+        do {
+            try await repository.recordEvent(AppEvent(kind: kind, date: environment.clock.now))
+        } catch {
+            Log.app.failure("Event save failed", code: (error as NSError).code)
+        }
+        await refreshProgress()
+    }
+
+    // MARK: Reminders
+
+    func setReminders(enabled: Bool) async {
+        if enabled {
+            guard let reminders = environment.reminders, await reminders.authorize() else {
+                preferences.remindersEnabled = false
+                return
+            }
+        }
+        preferences.remindersEnabled = enabled
+        await scheduleReminders()
+    }
+
+    func setReminderTime(minutes: Int) async {
+        preferences.reminderMinutes = min(max(minutes, 0), 24 * 60 - 1)
+        await scheduleReminders()
+    }
+
+    func answerReminderOffer(accept: Bool) async {
+        offerReminder = false
+        preferences.reminderOffered = true
+        if accept { await setReminders(enabled: true) }
+    }
+
+    /// Replaces pending reminders: none when off; otherwise one a day for a
+    /// week, skipping today once its goal is met.
+    private func scheduleReminders() async {
+        guard let scheduler = environment.reminders else { return }
+        guard preferences.remindersEnabled, phase == .ready else {
+            await scheduler.replace(with: [])
+            return
+        }
+        let plan = ReminderPlan.plan(
+            minutes: preferences.reminderMinutes,
+            goalMetToday: progress?.goalMetToday ?? false,
+            clock: environment.clock,
+            calendar: environment.calendar()
+        )
+        await scheduler.replace(
+            with: plan.map {
+                ScheduledReminder(
+                    identifier: $0.identifier, fireDate: $0.fireDate, title: ReminderPlan.title, body: $0.message)
+            }
+        )
+    }
+
     // MARK: Quick Log
+
+    /// How far back Quick Log can log: from the start of yesterday until now.
+    var backfillRange: ClosedRange<Date> {
+        let calendar = environment.calendar()
+        let now = environment.clock.now
+        let earliest = calendar.start(of: calendar.adding(days: -ProgressRules.backfillDays, to: calendar.day(now)))
+        return earliest...now
+    }
 
     func refreshTodayLogs() async {
         guard let repository else { return }
@@ -352,7 +486,10 @@ final class AppModel {
     @discardableResult
     func saveQuickLog(_ draft: QuickLogDraft) async -> Bool {
         guard let repository, !draft.isEmpty else { return false }
-        let timestamp = environment.clock.now
+        let range = backfillRange
+        let timestamp = min(max(draft.timestamp ?? range.upperBound, range.lowerBound), range.upperBound)
+        let xpBefore = progress?.xp ?? 0
+        let wasFirstSave = (progress?.totalDaysLogged ?? 0) == 0
         do {
             for var entry in draft.entries(at: timestamp) {
                 if preferences.writeBackEnabled, let health = environment.health, let write = HealthWrite.for(entry),
@@ -369,6 +506,14 @@ final class AppModel {
             Log.app.event("Quick log saved")
             await refreshTodayLogs()
             await refreshDashboard()
+            await refreshProgress()
+            if let progress {
+                saveMessage = ProgressCopy.saved(progress, xpEarned: max(0, progress.xp - xpBefore))
+            }
+            if wasFirstSave && !preferences.reminderOffered && environment.reminders != nil {
+                offerReminder = true
+            }
+            await refreshAnalysis()
             return true
         } catch {
             Log.app.failure("Quick log save failed", code: (error as NSError).code)
@@ -393,6 +538,7 @@ final class AppModel {
         }
         await refreshTodayLogs()
         await refreshDashboard()
+        await refreshProgress()
     }
 
     /// Turning write-back on asks for write permission first.
@@ -406,6 +552,7 @@ final class AppModel {
             }
         }
         preferences.writeBackEnabled = enabled
+        if enabled { await record(.enabledHealthSaving) }
     }
 
     // MARK: Delete everything
@@ -416,6 +563,7 @@ final class AppModel {
     /// Health data now, and the Health app can delete them.
     func deleteAllData() async -> DeletionReport {
         await environment.health?.stopObserving()
+        await environment.reminders?.replace(with: [])
         syncEngine = nil
         repository = nil
         if let database {
@@ -430,6 +578,9 @@ final class AppModel {
         latestReports = [:]
         patterns = []
         todayLogs = []
+        progress = nil
+        glance = nil
+        analysisCache = nil
 
         let directory = try? environment.storeDirectory()
         if let directory {

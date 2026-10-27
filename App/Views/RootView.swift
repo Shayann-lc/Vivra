@@ -62,16 +62,16 @@ struct RootView: View {
 
 struct MainTabView: View {
     enum Selection: Hashable {
-        case dashboard, log, insights, settings
+        case today, log, insights, progress
     }
 
     @Bindable var model: AppModel
-    @State private var selection = Selection.dashboard
+    @State private var selection = Selection.today
 
     var body: some View {
         TabView(selection: $selection) {
-            Tab("Dashboard", systemImage: "square.grid.2x2", value: .dashboard) {
-                DashboardView(model: model)
+            Tab("Today", systemImage: "sun.max", value: .today) {
+                TodayView(model: model) { selection = $0 }
             }
             Tab("Log", systemImage: "plus.circle", value: .log) {
                 QuickLogView(model: model)
@@ -79,8 +79,8 @@ struct MainTabView: View {
             Tab("Insights", systemImage: "text.alignleft", value: .insights) {
                 InsightsView(model: model)
             }
-            Tab("Settings", systemImage: "gearshape", value: .settings) {
-                SettingsView(model: model)
+            Tab("Progress", systemImage: "chart.bar.fill", value: .progress) {
+                ProgressScreen(model: model)
             }
         }
         .onChange(of: model.quickLogRequested, initial: true) { _, requested in
@@ -88,6 +88,29 @@ struct MainTabView: View {
                 selection = .log
                 model.quickLogRequested = false
             }
+        }
+        .overlay(alignment: .top) {
+            if let message = model.saveMessage {
+                Text(message)
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.thinMaterial, in: .capsule)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .task(id: message) {
+                        try? await Task.sleep(for: .seconds(3))
+                        model.saveMessage = nil
+                    }
+                    .accessibilityAddTraits(.isStaticText)
+            }
+        }
+        .animation(.default, value: model.saveMessage)
+        .alert("Would you like a daily reminder?", isPresented: $model.offerReminder) {
+            Button("Remind Me at 7 PM") { Task { await model.answerReminderOffer(accept: true) } }
+            Button("Not Now", role: .cancel) { Task { await model.answerReminderOffer(accept: false) } }
+        } message: {
+            Text("One gentle nudge a day, skipped once you've checked in. You can change the time in Settings.")
         }
     }
 }

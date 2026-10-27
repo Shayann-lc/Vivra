@@ -6,6 +6,8 @@ struct QuickLogView: View {
     let model: AppModel
     @State private var draft = QuickLogDraft()
     @State private var savedConfirmation = false
+    @State private var logEarlier = false
+    @State private var earlierTime = Date.now
     @FocusState private var noteFocused: Bool
 
     var body: some View {
@@ -43,6 +45,20 @@ struct QuickLogView: View {
                 }
 
                 Section {
+                    Toggle("Log for an earlier time", isOn: $logEarlier)
+                    if logEarlier {
+                        DatePicker(
+                            "Time",
+                            selection: $earlierTime,
+                            in: model.backfillRange,
+                            displayedComponents: [.date, .hourAndMinute]
+                        )
+                    }
+                } footer: {
+                    Text("You can log for earlier today or yesterday. It counts towards that day.")
+                }
+
+                Section {
                     Button {
                         Task { await save() }
                     } label: {
@@ -57,7 +73,7 @@ struct QuickLogView: View {
                 }
 
                 if !model.todayLogs.isEmpty {
-                    Section("Logged today") {
+                    Section("Logged recently") {
                         ForEach(model.todayLogs) { entry in
                             LogRow(entry: entry)
                         }
@@ -80,8 +96,10 @@ struct QuickLogView: View {
 
     private func save() async {
         noteFocused = false
+        draft.timestamp = logEarlier ? earlierTime : nil
         if await model.saveQuickLog(draft) {
             draft = QuickLogDraft()
+            logEarlier = false
             savedConfirmation.toggle()
         }
     }
@@ -130,7 +148,7 @@ private struct LogRow: View {
         HStack {
             Text(description)
             Spacer()
-            Text(entry.timestamp.formatted(date: .omitted, time: .shortened))
+            Text(entry.timestamp.formatted(.dateTime.weekday(.abbreviated).hour().minute()))
                 .foregroundStyle(.secondary)
         }
     }

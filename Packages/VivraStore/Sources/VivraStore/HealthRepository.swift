@@ -1,5 +1,6 @@
 import Foundation
 import GRDB
+import Gamification
 import InsightEngine
 import NarrativeCore
 import SyncCore
@@ -223,6 +224,58 @@ public final class HealthRepository: SyncStore, Sendable {
                 .order(Column("timestamp").desc)
                 .fetchAll(db)
                 .compactMap(\.model)
+        }
+    }
+
+    /// Every log entry, oldest first. Progress is derived from the whole
+    /// history; entries are small, so this stays cheap.
+    public func allLogs() async throws -> [LogEntry] {
+        try await writer.read { db in
+            try LogEntryRecord.order(Column("timestamp")).fetchAll(db).compactMap(\.model)
+        }
+    }
+
+    // MARK: Progress
+
+    /// Sets the daily goal from `day` onwards (replacing a change made the
+    /// same day).
+    public func setGoal(_ target: Int, from day: Day) async throws {
+        try await writer.write { db in
+            try db.execute(
+                sql: "INSERT OR REPLACE INTO goal_setting (effective_day, target) VALUES (?, ?)",
+                arguments: [day.description, target]
+            )
+        }
+    }
+
+    public func goalChanges() async throws -> [GoalChange] {
+        try await writer.read { db in
+            try Row.fetchAll(db, sql: "SELECT effective_day, target FROM goal_setting ORDER BY effective_day")
+                .compactMap { row in
+                    let parts = (row["effective_day"] as String).split(separator: "-").compactMap { Int($0) }
+                    guard parts.count == 3 else { return nil }
+                    return GoalChange(
+                        effective: Day(year: parts[0], month: parts[1], day: parts[2]), target: row["target"])
+                }
+        }
+    }
+
+    public func recordEvent(_ event: AppEvent) async throws {
+        try await writer.write { db in
+            try db.execute(
+                sql: "INSERT INTO app_event (kind, date) VALUES (?, ?)",
+                arguments: [event.kind.rawValue, event.date.timeIntervalSince1970]
+            )
+        }
+    }
+
+    public func events() async throws -> [AppEvent] {
+        try await writer.read { db in
+            try Row.fetchAll(db, sql: "SELECT kind, date FROM app_event ORDER BY date").compactMap { row in
+                AppEventKind(rawValue: row["kind"]).map {
+                    AppEvent(kind: $0, date: Date(timeIntervalSince1970: row["date"]))
+                }
+            }
         }
     }
 

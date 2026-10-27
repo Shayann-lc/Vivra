@@ -116,6 +116,20 @@ enum Migrations {
             }
         }
 
+        migrator.registerMigration("v4_progress") { db in
+            try db.create(table: "goal_setting") { t in
+                t.primaryKey("effective_day", .text)
+                t.column("target", .integer).notNull()
+            }
+            // Append-only: rows are never updated or deleted (except by
+            // "delete everything").
+            try db.create(table: "app_event") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("kind", .text).notNull()
+                t.column("date", .double).notNull()
+            }
+        }
+
         return migrator
     }
 }

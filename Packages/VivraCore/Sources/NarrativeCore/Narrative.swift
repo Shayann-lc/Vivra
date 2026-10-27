@@ -115,7 +115,7 @@ public enum NarrativeValidator {
 
     /// Whole-word, case-insensitive match. Apostrophes count as word
     /// characters, so "don't" doesn't match "don".
-    static func containsPhrase(_ phrase: String, in text: String) -> Bool {
+    public static func containsPhrase(_ phrase: String, in text: String) -> Bool {
         let haystack = text.lowercased()
         let needle = phrase.lowercased()
         var searchRange = haystack.startIndex..<haystack.endIndex

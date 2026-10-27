@@ -226,3 +226,15 @@ private let moodComparison = Finding(
         #expect(FindingFormatter.grouped(1_234_567) == "1,234,567")
     }
 }
+
+@Suite struct MetricDescriptionTests {
+    @Test func descriptionsFollowTheStyleGuide() {
+        for metric in Metric.allCases {
+            let text = MetricDescriptions.title(metric) + " " + MetricDescriptions.description(metric)
+            for term in StyleGuide.bannedTerms + StyleGuide.causalPhrases {
+                #expect(!NarrativeValidator.containsPhrase(term, in: text), "\"\(term)\" in \(metric)")
+            }
+        }
+        #expect(MetricDescriptions.title(.restingHeartRate) == "Resting heart rate")
+    }
+}

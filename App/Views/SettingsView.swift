@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     let model: AppModel
     @State private var confirmingDelete = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
@@ -34,6 +35,33 @@ struct SettingsView: View {
                         AppLock.canAuthenticate
                             ? "Require Face ID or your passcode to open Vivra."
                             : "Set a passcode on this iPhone to use App Lock."
+                    )
+                }
+
+                Section {
+                    Toggle(
+                        "Daily Reminder",
+                        isOn: Binding(
+                            get: { model.preferences.remindersEnabled },
+                            set: { enabled in Task { await model.setReminders(enabled: enabled) } }
+                        )
+                    )
+                    if model.preferences.remindersEnabled {
+                        DatePicker(
+                            "Time",
+                            selection: Binding(
+                                get: { Self.date(minutes: model.preferences.reminderMinutes) },
+                                set: { date in Task { await model.setReminderTime(minutes: Self.minutes(date)) } }
+                            ),
+                            displayedComponents: .hourAndMinute
+                        )
+                    }
+                } header: {
+                    Text("Reminders")
+                } footer: {
+                    Text(
+                        "At most one gentle reminder a day, skipped once you've checked in. "
+                            + "Reminders stop on their own if you haven't opened Vivra for a week."
                     )
                 }
 
@@ -84,6 +112,9 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .toolbar {
+                Button("Done") { dismiss() }
+            }
             .confirmationDialog(
                 "Delete all Vivra data?",
                 isPresented: $confirmingDelete,
@@ -96,5 +127,15 @@ struct SettingsView: View {
                 Text("This can't be undone.")
             }
         }
+    }
+
+    private static func date(minutes: Int) -> Date {
+        Calendar.autoupdatingCurrent.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: .now)
+            ?? .now
+    }
+
+    private static func minutes(_ date: Date) -> Int {
+        let components = Calendar.autoupdatingCurrent.dateComponents([.hour, .minute], from: date)
+        return (components.hour ?? 19) * 60 + (components.minute ?? 0)
     }
 }

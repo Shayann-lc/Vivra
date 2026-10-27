@@ -33,6 +33,11 @@ final class Preferences {
         case appLockTimeout
         case writeBackEnabled
         case requestedPermissionRevisions
+        case remindersEnabled
+        case reminderMinutes
+        case reminderOffered
+        case todayCardOrder
+        case hiddenTodayCards
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -56,6 +61,24 @@ final class Preferences {
     var writeBackEnabled: Bool {
         didSet { defaults.set(writeBackEnabled, forKey: Key.writeBackEnabled.rawValue) }
     }
+    var remindersEnabled: Bool {
+        didSet { defaults.set(remindersEnabled, forKey: Key.remindersEnabled.rawValue) }
+    }
+    /// Minutes after midnight.
+    var reminderMinutes: Int {
+        didSet { defaults.set(reminderMinutes, forKey: Key.reminderMinutes.rawValue) }
+    }
+    /// Whether the one-time reminder offer has been shown.
+    var reminderOffered: Bool {
+        didSet { defaults.set(reminderOffered, forKey: Key.reminderOffered.rawValue) }
+    }
+    /// Today's detail cards in display order, including hidden ones.
+    var todayCardOrder: [TodayCard] {
+        didSet { defaults.set(todayCardOrder.map(\.rawValue), forKey: Key.todayCardOrder.rawValue) }
+    }
+    var hiddenTodayCards: Set<TodayCard> {
+        didSet { defaults.set(hiddenTodayCards.map(\.rawValue).sorted(), forKey: Key.hiddenTodayCards.rawValue) }
+    }
     /// The revision of each permission group last requested (group id → revision).
     var requestedPermissionRevisions: [String: Int] {
         didSet { defaults.set(requestedPermissionRevisions, forKey: Key.requestedPermissionRevisions.rawValue) }
@@ -71,7 +94,15 @@ final class Preferences {
         writeBackEnabled = defaults.bool(forKey: Key.writeBackEnabled.rawValue)
         requestedPermissionRevisions =
             defaults.dictionary(forKey: Key.requestedPermissionRevisions.rawValue) as? [String: Int] ?? [:]
+        remindersEnabled = defaults.bool(forKey: Key.remindersEnabled.rawValue)
+        reminderMinutes = defaults.object(forKey: Key.reminderMinutes.rawValue) as? Int ?? 19 * 60
+        reminderOffered = defaults.bool(forKey: Key.reminderOffered.rawValue)
+        todayCardOrder = TodayCard.ordered(defaults.stringArray(forKey: Key.todayCardOrder.rawValue) ?? [])
+        hiddenTodayCards = Set(
+            (defaults.stringArray(forKey: Key.hiddenTodayCards.rawValue) ?? []).compactMap(TodayCard.init))
     }
+
+    var visibleTodayCards: [TodayCard] { todayCardOrder.filter { !hiddenTodayCards.contains($0) } }
 
     var hasAcceptedCurrentDisclaimer: Bool {
         acceptedDisclaimerVersion >= Self.currentDisclaimerVersion
@@ -87,6 +118,11 @@ final class Preferences {
         appLockTimeout = .immediately
         writeBackEnabled = false
         requestedPermissionRevisions = [:]
+        remindersEnabled = false
+        reminderMinutes = 19 * 60
+        reminderOffered = false
+        todayCardOrder = TodayCard.defaultOrder
+        hiddenTodayCards = []
         // The didSet observers above wrote defaults back; remove them again.
         for key in Key.allCases { defaults.removeObject(forKey: key.rawValue) }
     }
@@ -94,5 +130,35 @@ final class Preferences {
     /// True when nothing is stored.
     var isEmpty: Bool {
         Key.allCases.allSatisfy { defaults.object(forKey: $0.rawValue) == nil }
+    }
+}
+
+/// Detail cards on the Today screen, which people can show, hide and reorder.
+enum TodayCard: String, CaseIterable, Identifiable {
+    case sleep
+    case heart
+    case activity
+    case workouts
+    case logged
+    case body
+
+    var id: String { rawValue }
+    static let defaultOrder: [TodayCard] = [.sleep, .heart, .activity, .workouts, .logged, .body]
+
+    /// Saved order first, then any cards added since, in default order.
+    static func ordered(_ saved: [String]) -> [TodayCard] {
+        let known = saved.compactMap(TodayCard.init)
+        return known + defaultOrder.filter { !known.contains($0) }
+    }
+
+    var title: String {
+        switch self {
+        case .sleep: "Sleep"
+        case .heart: "Heart"
+        case .activity: "Activity"
+        case .workouts: "Workouts"
+        case .logged: "Logged today"
+        case .body: "Body"
+        }
     }
 }

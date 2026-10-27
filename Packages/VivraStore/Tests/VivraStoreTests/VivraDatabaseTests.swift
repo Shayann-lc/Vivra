@@ -27,7 +27,7 @@ func makeTemporaryDirectory() throws -> URL {
 
         let database = try VivraDatabase.open(in: directory, keyProvider: StaticKeyProvider(key: makeKey(1)))
 
-        #expect(try database.appliedMigrations() == ["v1_settings", "v2_health", "v3_phase2"])
+        #expect(try database.appliedMigrations() == ["v1_settings", "v2_health", "v3_phase2", "v4_progress"])
         let hasSettingTable = try database.writer.read { db in try db.tableExists("setting") }
         #expect(hasSettingTable)
     }

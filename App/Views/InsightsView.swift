@@ -29,7 +29,7 @@ struct InsightsView: View {
                 }
             }
             .navigationTitle("Insights")
-            .refreshable { await model.refreshPatterns() }
+            .refreshable { await model.refreshAnalysis() }
         }
     }
 }
@@ -168,6 +168,6 @@ struct PatternsView: View {
             }
         }
         .navigationTitle("Patterns")
-        .task { await model.refreshPatterns() }
+        .task { await model.noteViewedPatterns() }
     }
 }

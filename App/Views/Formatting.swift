@@ -9,6 +9,11 @@ enum Formatting {
         return date.formatted(.dateTime.weekday(.abbreviated))
     }
 
+    static func shortDate(_ day: Day, calendar: Calendar = .autoupdatingCurrent) -> String {
+        let date = calendar.date(from: DateComponents(year: day.year, month: day.month, day: day.day)) ?? .now
+        return date.formatted(.dateTime.day().month(.abbreviated))
+    }
+
     static func dayRange(_ start: Day, _ end: Day, calendar: Calendar = .autoupdatingCurrent) -> String {
         func date(_ day: Day) -> Date {
             calendar.date(from: DateComponents(year: day.year, month: day.month, day: day.day)) ?? .now
