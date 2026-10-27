@@ -3,6 +3,7 @@ import Gamification
 import InsightEngine
 import NarrativeCore
 import SwiftUI
+import UIKit
 import VivraModel
 
 /// Home. Numbers first and compact, no composite scores, no generated text
@@ -70,6 +71,9 @@ struct TodayView: View {
                 }
                 .padding()
             }
+            // The grouped style used by every list in iOS: white cards on a
+            // grey page, so secondary text keeps its contrast.
+            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("Today")
             .refreshable { await model.sync() }
             .toolbar {
@@ -177,7 +181,7 @@ private struct ProgressStrip: View {
                     .accessibilityHidden(true)
             }
             .padding()
-            .background(.background.secondary, in: .rect(cornerRadius: 16))
+            .background(CardStyle.background, in: .rect(cornerRadius: 16))
         }
         .buttonStyle(.plain)
     }
@@ -218,7 +222,7 @@ struct Card<Content: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.background.secondary, in: .rect(cornerRadius: 16))
+        .background(CardStyle.background, in: .rect(cornerRadius: 16))
     }
 }
 
@@ -518,4 +522,9 @@ struct HeartRecordingsView: View {
         }
         .navigationTitle("Heart Recordings")
     }
+}
+
+enum CardStyle {
+    /// The background of Today's cards: the grouped list cell colour.
+    static let background = Color(uiColor: .secondarySystemGroupedBackground)
 }

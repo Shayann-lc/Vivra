@@ -53,6 +53,8 @@ struct SettingsView: View {
                     ) {
                         ForEach(ComparisonChoice.allCases) { Text($0.label).tag($0) }
                     }
+                    // Inline rows wrap at every text size; a menu's value can clip.
+                    .pickerStyle(.inline)
                     if model.comparisonChoice != .none {
                         Picker(
                             "Birth year",
