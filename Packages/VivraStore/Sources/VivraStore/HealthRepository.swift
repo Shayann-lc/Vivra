@@ -143,14 +143,14 @@ public final class HealthRepository: SyncStore, Sendable {
         -> DailySourceTotals
     {
         guard !kinds.isEmpty, !days.isEmpty else { return [:] }
-        var arguments: [any DatabaseValueConvertible] = []
+        var arguments: [(any DatabaseValueConvertible)?] = []
         for day in days {
             arguments += [
                 day.description, calendar.start(of: day).timeIntervalSince1970,
                 calendar.start(of: calendar.adding(days: 1, to: day)).timeIntervalSince1970,
             ]
         }
-        arguments += kinds.map(\.rawValue)
+        arguments += kinds.map { $0.rawValue as (any DatabaseValueConvertible)? }
         let dayRows = Array(repeating: "(?, ?, ?)", count: days.count).joined(separator: ", ")
         let kindMarks = Array(repeating: "?", count: kinds.count).joined(separator: ", ")
         let sql = """
