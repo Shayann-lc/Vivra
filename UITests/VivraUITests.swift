@@ -9,6 +9,8 @@ import XCTest
 final class VivraUITests: XCTestCase {
     private let timeout: TimeInterval = 30
     private static let scrollEdgeEffectHeight: CGFloat = 60
+    /// Taller than an inline navigation bar, shorter than a large-title one.
+    private static let inlineNavigationBarMaxHeight: CGFloat = 70
 
     func testOnboardingAndEveryTabPassTheAccessibilityAudit() throws {
         // Keep going after an audit issue, so one run reports every screen.
@@ -92,12 +94,24 @@ final class VivraUITests: XCTestCase {
             tabBar.exists && tabBar.isHittable
             ? tabBar.frame.inset(by: UIEdgeInsets(top: -Self.scrollEdgeEffectHeight, left: 0, bottom: 0, right: 0))
             : .null
+        // The same fade happens under a collapsed (inline) navigation bar once
+        // a screen has scrolled. A large-title bar isn't counted, so nothing
+        // on an unscrolled screen is skipped.
+        let navigationBar = app.navigationBars.firstMatch
+        let fadedBars =
+            navigationBar.exists && navigationBar.frame.height < Self.inlineNavigationBarMaxHeight
+            ? [
+                tabBarFrame,
+                navigationBar.frame.inset(
+                    by: UIEdgeInsets(top: 0, left: 0, bottom: -Self.scrollEdgeEffectHeight, right: 0)),
+            ]
+            : [tabBarFrame]
         do {
             try app.performAccessibilityAudit { issue in
                 // Every issue is named in the test log with its element, and
                 // the ones ignored say why, so CI shows exactly what to fix.
                 let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)'" } ?? "no element"
-                let reason = Self.knownFalsePositive(issue, tabBarFrame: tabBarFrame)
+                let reason = Self.knownFalsePositive(issue, fadedBars: fadedBars)
                 XCTContext.runActivity(
                     named: "Audit issue\(reason.map { " (ignored: \($0))" } ?? ""): \(issue.compactDescription) on "
                         + "\(element): \(issue.detailedDescription)"
@@ -111,14 +125,14 @@ final class VivraUITests: XCTestCase {
 
     /// Findings that aren't about anything Vivra draws or styles (PLAN
     /// Phase 5). Anything else fails the test.
-    private static func knownFalsePositive(_ issue: XCUIAccessibilityAuditIssue, tabBarFrame: CGRect) -> String? {
+    private static func knownFalsePositive(_ issue: XCUIAccessibilityAuditIssue, fadedBars: [CGRect]) -> String? {
         guard let element = issue.element else {
             // Pixel-level findings with nothing to point at, such as content
             // blurred behind the tab bar or a disabled stepper button.
             return "no element"
         }
-        if element.frame.intersects(tabBarFrame) {
-            return "behind the translucent tab bar or its scroll edge fade"
+        if fadedBars.contains(where: element.frame.intersects) {
+            return "behind a translucent bar or its scroll edge fade"
         }
         if issue.auditType == .contrast && issue.compactDescription == "Contrast nearly passed" {
             // System secondary text and the system tint, which pass at
