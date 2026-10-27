@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 
 /// Walks through onboarding and every tab with fresh storage and no
@@ -7,6 +8,7 @@ import XCTest
 @MainActor
 final class VivraUITests: XCTestCase {
     private let timeout: TimeInterval = 20
+    private static let scrollEdgeEffectHeight: CGFloat = 60
 
     func testOnboardingAndEveryTabPassTheAccessibilityAudit() throws {
         // Keep going after an audit issue, so one run reports every screen.
@@ -56,8 +58,13 @@ final class VivraUITests: XCTestCase {
             add(attachment)
         }
         // The tab bar only counts while it's on screen (not under a sheet).
+        // Its area includes the scroll edge effect above it, where iOS fades
+        // the content scrolling underneath.
         let tabBar = app.tabBars.firstMatch
-        let tabBarFrame = tabBar.exists && tabBar.isHittable ? tabBar.frame : .null
+        let tabBarFrame =
+            tabBar.exists && tabBar.isHittable
+            ? tabBar.frame.inset(by: UIEdgeInsets(top: -Self.scrollEdgeEffectHeight, left: 0, bottom: 0, right: 0))
+            : .null
         do {
             try app.performAccessibilityAudit { issue in
                 // Every issue is named in the test log with its element, and
@@ -84,7 +91,7 @@ final class VivraUITests: XCTestCase {
             return "no element"
         }
         if element.frame.intersects(tabBarFrame) {
-            return "behind the translucent tab bar"
+            return "behind the translucent tab bar or its scroll edge fade"
         }
         if issue.auditType == .contrast && issue.compactDescription == "Contrast nearly passed" {
             // System secondary text and the system tint, which pass at
