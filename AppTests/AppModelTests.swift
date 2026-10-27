@@ -25,7 +25,9 @@ import Testing
         }
     }
 
-    private static func makeHarness(directory: URL? = nil, suiteName: String? = nil) -> Harness {
+    private static func makeHarness(directory: URL? = nil, suiteName: String? = nil, sampleData: Bool = false)
+        -> Harness
+    {
         let directory =
             directory
             ?? FileManager.default.temporaryDirectory.appendingPathComponent(
@@ -33,7 +35,8 @@ import Testing
                 isDirectory: true
             )
         let suiteName = suiteName ?? "app.vivra.apptests.\(UUID().uuidString)"
-        let environment = AppEnvironment.isolated(directory: directory, keychainService: keychainService, now: now)
+        let environment = AppEnvironment.isolated(
+            directory: directory, keychainService: keychainService, now: now, sampleData: sampleData)
         let model = AppModel(
             environment: environment,
             defaults: UserDefaults(suiteName: suiteName)!,
@@ -193,6 +196,25 @@ import Testing
 
         harness.model.finishExport(export)
         #expect(!fileManager.fileExists(atPath: export.directory.path))
+    }
+
+    /// Debug builds can start with made-up data for screenshots; every
+    /// screen should then have something to show.
+    @Test func sampleDataFillsEveryScreen() async {
+        let harness = Self.makeHarness(sampleData: true)
+        defer { harness.cleanUp() }
+        await harness.model.start()
+        await harness.model.completeOnboarding()
+
+        let dashboard = harness.model.dashboard
+        #expect(dashboard?.sleep.isEmpty == false)
+        #expect(dashboard?.heart.isEmpty == false)
+        #expect(dashboard?.workouts.isEmpty == false)
+        #expect((harness.model.progress?.totalDaysLogged ?? 0) > 60)
+        #expect(harness.model.history(.restingHeartRate)?.points.isEmpty == false)
+
+        await harness.model.createReport(.weekly)
+        #expect(harness.model.latestReport(.weekly)?.summary.draft.bullets.isEmpty == false)
     }
 
     @Test func dailyCheckInWithoutDataUsesTheEmptyTemplate() async {

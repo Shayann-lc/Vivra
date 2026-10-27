@@ -19,6 +19,9 @@ struct AppEnvironment {
     /// ignored when read back.
     var ownBundleIdentifier: String?
     var reminders: (any ReminderScheduling)?
+    /// Fills a fresh store with made-up data (`SampleData`). Debug builds
+    /// only, for UI tests and screenshots.
+    var loadsSampleData = false
 
     static var live: AppEnvironment {
         AppEnvironment(
@@ -42,7 +45,8 @@ extension AppEnvironment {
         keychainService: String,
         now: Date,
         timeZoneIdentifier: String = "UTC",
-        reminders: (any ReminderScheduling)? = nil
+        reminders: (any ReminderScheduling)? = nil,
+        sampleData: Bool = false
     ) -> AppEnvironment {
         let calendar = DayCalendar(timeZone: TimeZone(identifier: timeZoneIdentifier) ?? .gmt)
         return AppEnvironment(
@@ -53,7 +57,8 @@ extension AppEnvironment {
             calendar: { calendar },
             makeNarrator: { nil },
             ownBundleIdentifier: "app.vivra.isolated",
-            reminders: reminders
+            reminders: reminders,
+            loadsSampleData: sampleData
         )
     }
 }
@@ -66,10 +71,12 @@ struct SystemClock: Clock {
     extension AppEnvironment {
         /// The launch argument UI tests pass.
         static let uiTestingArgument = "-ui-testing"
+        /// Added to `-ui-testing` to start with 90 days of made-up data.
+        static let sampleDataArgument = "-sample-data"
 
         /// For UI tests: fresh storage on every launch, no HealthKit prompts,
         /// no language model and no notifications. Debug builds only.
-        static func uiTesting() -> AppEnvironment {
+        static func uiTesting(sampleData: Bool) -> AppEnvironment {
             let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
                 "UITesting", isDirectory: true)
             try? FileManager.default.removeItem(at: directory)
@@ -81,7 +88,8 @@ struct SystemClock: Clock {
                 calendar: { DayCalendar(Calendar.autoupdatingCurrent) },
                 makeNarrator: { nil },
                 ownBundleIdentifier: Bundle.main.bundleIdentifier,
-                reminders: nil
+                reminders: nil,
+                loadsSampleData: sampleData
             )
         }
     }

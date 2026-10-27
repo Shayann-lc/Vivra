@@ -346,6 +346,7 @@ Workouts that the Strava app writes into Apple Health reach us as HealthKit data
 - Sync is tested against `FakeHealthDataSource`: insert, delete, anchor resume, and a crash between fetch and commit.
 - Narrative is tested by validating recorded model outputs (golden files) and checking that the template renderer is deterministic.
 - UI smoke tests (XCUITest) in Phase 5.
+- **Sample data** (owner, after Phase 5): `SampleData` in SyncCore generates 90 seeded days of sleep, heart, activity, workouts, body measurements and Quick Log entries. Debug builds launched with `-ui-testing -sample-data` load it into a fresh store, so the UI test and its screenshots show filled screens. Release builds can't load it, and it never touches Apple Health.
 
 ## 10. Tooling and CI
 

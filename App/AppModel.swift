@@ -182,7 +182,9 @@ final class AppModel {
                 let suiteName = "app.vivra.uitesting"
                 UserDefaults().removePersistentDomain(forName: suiteName)
                 if let defaults = UserDefaults(suiteName: suiteName) {
-                    return AppModel(environment: .uiTesting(), defaults: defaults, defaultsDomain: suiteName)
+                    let environment = AppEnvironment.uiTesting(
+                        sampleData: arguments.contains(AppEnvironment.sampleDataArgument))
+                    return AppModel(environment: environment, defaults: defaults, defaultsDomain: suiteName)
                 }
             }
         #endif
@@ -217,6 +219,9 @@ final class AppModel {
             let repository = HealthRepository(database: database)
             self.database = database
             self.repository = repository
+            #if DEBUG
+                if environment.loadsSampleData { await loadSampleData(into: repository) }
+            #endif
             if let health = environment.health {
                 syncEngine = SyncEngine(
                     source: health,
@@ -247,6 +252,21 @@ final class AppModel {
             phase = .onboarding
         }
     }
+
+    #if DEBUG
+        /// Fills the store with `SampleData`. Only the UI tests' isolated
+        /// stores and app tests ask for this.
+        private func loadSampleData(into repository: HealthRepository) async {
+            let data = SampleData.generate(now: environment.clock.now, calendar: environment.calendar())
+            do {
+                for (type, batch) in data.batches { try await repository.apply(batch, for: type) }
+                for entry in data.logs { try await repository.saveLog(entry) }
+                Log.app.event("Sample data loaded, logs", count: data.logs.count)
+            } catch {
+                Log.app.failure("Sample data failed", code: (error as NSError).code)
+            }
+        }
+    #endif
 
     // MARK: Onboarding and permissions
 

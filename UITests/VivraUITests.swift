@@ -1,9 +1,9 @@
 import UIKit
 import XCTest
 
-/// Walks through onboarding and every tab with fresh storage and no
-/// HealthKit (`-ui-testing`), running Xcode's accessibility audit on each
-/// screen (PLAN Phase 5). Each screen is also kept as a screenshot, which CI
+/// Walks through onboarding and every tab with fresh storage, no HealthKit
+/// and 90 days of made-up data (`-ui-testing -sample-data`), running Xcode's
+/// accessibility audit on each screen (PLAN Phase 5). Each screen is also kept as a screenshot, which CI
 /// exports as an artifact so the app can be seen without Xcode.
 @MainActor
 final class VivraUITests: XCTestCase {
@@ -14,7 +14,7 @@ final class VivraUITests: XCTestCase {
         // Keep going after an audit issue, so one run reports every screen.
         continueAfterFailure = true
         let app = XCUIApplication()
-        app.launchArguments = ["-ui-testing"]
+        app.launchArguments = ["-ui-testing", "-sample-data"]
         app.launch()
 
         tap(app.buttons["Continue"], until: app.buttons["I Understand"], auditing: app, screenshot: "01 Welcome")
@@ -40,6 +40,18 @@ final class VivraUITests: XCTestCase {
                 _ = XCTWaiter.wait(for: [selected], timeout: 5)
             }
             audit(app, screenshot: "\(number) \(tab)")
+            switch tab {
+            case "Today":
+                app.swipeUp()
+                audit(app, screenshot: "05b Today, scrolled")
+            case "Insights":
+                let weekly = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Weekly summary'"))
+                    .firstMatch
+                tap(app.buttons["Create Weekly Summary"], until: weekly, auditing: app, screenshot: nil)
+                audit(app, screenshot: "07b Weekly summary")
+            default:
+                break
+            }
         }
 
         todayTab.tap()
