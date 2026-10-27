@@ -5,10 +5,10 @@ and the definition of done for each phase.
 
 ## Current phase
 
-**Phase 5** (hardening: full export, accessibility, localization groundwork,
-battery and sync performance, App Store notes) is approved and in progress.
-Its definition of done is in PLAN §7. Phases 0–4 are done. Nothing is planned
-after Phase 5; anything new needs the owner's approval first.
+**Phases 0–5 are done in code** (PLAN §7). The device checks in
+`docs/DEVICE_TEST.md` and the decisions in `docs/APP_STORE.md` are with the
+owner. Nothing is planned after Phase 5: anything new needs the owner's
+approval and a definition of done first.
 
 ## Hard rules
 
