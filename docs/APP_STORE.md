@@ -20,9 +20,10 @@ the developer or a third party can access. Vivra:
 - exports data only when the person taps **Export All Data**, to a destination they
   pick in the share sheet.
 
-**Owner to confirm:** Crash reports and metrics that people choose to share with
-developers through Apple's diagnostics. Apple's guidance has treated this as optional
-to disclose. Recheck the current wording before answering.
+**Crash reports (owner, decided):** not declared. Vivra has no crash reporter. The only
+crash data is what people choose to share with developers through Apple's own
+diagnostics setting, which the app doesn't control. The label stays "Data Not
+Collected"; recheck Apple's wording at submission in case it changes.
 
 The privacy manifest (`App/Resources/PrivacyInfo.xcprivacy`) declares no tracking, no
 collected data types, and `UserDefaults` access for reason `CA92.1`. Before
