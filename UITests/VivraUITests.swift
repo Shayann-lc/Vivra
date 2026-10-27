@@ -2,7 +2,8 @@ import XCTest
 
 /// Walks through onboarding and every tab with fresh storage and no
 /// HealthKit (`-ui-testing`), running Xcode's accessibility audit on each
-/// screen (PLAN Phase 5).
+/// screen (PLAN Phase 5). Each screen is also kept as a screenshot, which CI
+/// exports as an artifact so the app can be seen without Xcode.
 @MainActor
 final class VivraUITests: XCTestCase {
     private let timeout: TimeInterval = 20
@@ -13,40 +14,46 @@ final class VivraUITests: XCTestCase {
         app.launchArguments = ["-ui-testing"]
         app.launch()
 
-        tap(app.buttons["Continue"], auditing: app)
-        tap(app.buttons["I Understand"], auditing: app)
+        tap(app.buttons["Continue"], auditing: app, screenshot: "01 Welcome")
+        tap(app.buttons["I Understand"], auditing: app, screenshot: "02 Disclaimer")
 
         let notNow = app.buttons["Not Now"]
         XCTAssertTrue(notNow.waitForExistence(timeout: timeout))
-        audit(app)
+        audit(app, screenshot: "03 Permission")
         let goToDashboard = app.buttons["Go to Dashboard"]
         while notNow.exists && !goToDashboard.exists {
             notNow.tap()
             _ = goToDashboard.waitForExistence(timeout: 1)
         }
-        tap(goToDashboard, auditing: app)
+        tap(goToDashboard, auditing: app, screenshot: "04 All set")
 
-        for tab in ["Today", "Log", "Insights", "Progress"] {
+        for (number, tab) in [("05", "Today"), ("06", "Log"), ("07", "Insights"), ("08", "Progress")] {
             let button = app.tabBars.buttons[tab]
             XCTAssertTrue(button.waitForExistence(timeout: timeout), "\(tab) tab")
             button.tap()
-            audit(app)
+            audit(app, screenshot: "\(number) \(tab)")
         }
 
         app.tabBars.buttons["Today"].tap()
-        tap(app.buttons["Settings"], auditing: app)
+        tap(app.buttons["Settings"], auditing: app, screenshot: nil)
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: timeout))
-        audit(app)
+        audit(app, screenshot: "09 Settings")
     }
 
     /// Audits the current screen, then taps the element.
-    private func tap(_ element: XCUIElement, auditing app: XCUIApplication) {
+    private func tap(_ element: XCUIElement, auditing app: XCUIApplication, screenshot name: String?) {
         XCTAssertTrue(element.waitForExistence(timeout: timeout), element.description)
-        audit(app)
+        audit(app, screenshot: name)
         element.tap()
     }
 
-    private func audit(_ app: XCUIApplication) {
+    private func audit(_ app: XCUIApplication, screenshot name: String?) {
+        if let name {
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.name = name
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
         do {
             try app.performAccessibilityAudit()
         } catch {
