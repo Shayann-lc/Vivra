@@ -1,6 +1,6 @@
 # Vivra — Architecture and Phased Plan
 
-Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–3 are done in code, with CI green. The device checks for Phases 1–3 (`docs/DEVICE_TEST.md`) are pending with the owner. Phase 4 is waiting for approval.
+Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–3 are done in code, with CI green. The device checks for Phases 1–3 (`docs/DEVICE_TEST.md`) are pending with the owner. Phase 4 is approved and in progress.
 
 ## 1. Decisions already made
 
@@ -14,6 +14,7 @@ Status: **approved** (all of §11, with bundle ID and team as placeholders until
 | 6 | Dependencies | GRDB.swift + SQLCipher.swift (app runtime), XcodeGen (dev only). GRDB is **vendored** in `Vendor/GRDB`, because its SQLCipher build under SwiftPM requires a fork with an edited manifest (see `Vendor/GRDB/VENDORED.md`). |
 | 7 | Writing back to HealthKit | Opt-in write of mood (State of Mind) and drinks (water, caffeine, alcohol), Phase 2. |
 | 8 | Workout routes | **Not read or stored** in Phase 2 (owner, Phase 2 kickoff). GPS traces are the most sensitive data Vivra could hold, and nothing uses them yet. Revisit with a feature that needs them. |
+| 10 | VO2 max norms | **Every build:** Vivra points to Apple Health's Cardio Fitness levels (FRIEND-based) and ships no VO2 max table. **The owner's own non-commercial build** (`VIVRA_NONCOMMERCIAL`) also shows FRIEND 2015 treadmill medians, with citation (owner, Phase 4 kickoff). Licensing details are in `docs/NORMS.md`. |
 | 9 | Quick-log entry points | Widgets, controls and Shortcuts **open the app** at the Quick Log screen (owner, Phase 2 kickoff). The extension has no database access, no App Group and no shared Keychain item. |
 
 ## 2. Principles, restated as engineering rules
@@ -248,12 +249,40 @@ The owner asked for the interface to draw on public reviews of Whoop, Fitbit, Ap
 5. CI is green.
 
 ### Phase 4 — Deeper reports and reference norms
-- Monthly deep-dive, and on-demand "Why did I feel off today?". The question goes to the engine first (today's anomalies and recent lagged findings), and the model only words the result.
-- Age and sex comparisons from a bundled, versioned `norms.json`. Every row carries a citation that appears in the UI. Candidate sources are listed below, and licensing must be checked before any table is bundled:
-  - VO2 max: FRIEND registry (Kaminsky et al., *Mayo Clin Proc* 2015, and later updates).
-  - Resting HR: NHANES-based percentiles (Ostchega et al., NHSR 2011).
-  - Sleep duration: AASM/SRS consensus (Watson et al., 2015) and NSF recommendations.
-  - **Not ACSM tables:** they are copyrighted, so they need permission or must be avoided.
+
+**Monthly deep-dive**
+- A new report kind, `monthly`, covering the last 30 complete days. It includes:
+  - every current pattern;
+  - trends;
+  - each metric averaged over the 30 days next to the 30 days before (a new finding kind, `periodAverage`, with a metric needing at least 10 days in a period);
+  - unusual values from the period.
+- The same composer, validator and template fallback as the other reports. It's shown in Insights.
+
+**"Why do I feel off today?"**
+- An on-demand report kind, `feelingOff`. The engine collects:
+  1. unusual values from today or yesterday;
+  2. recent values that differ from your usual by at least the metric's minimum effect;
+  3. **patterns that apply today**: a significant pattern whose condition was met by the day before or last night's value. For example, "Yesterday you had 190 mg of caffeine. On days with 190 mg or more, you slept a median of …".
+- The model only words these findings, under an extra instruction never to call any of them a reason or cause. The answer is headed "What stood out today", with a fixed note: "Vivra can't tell why you feel a certain way. These are things in your data that stood out, and patterns seen before."
+
+**Reference norms** (`docs/NORMS.md` is the source of truth)
+- **Resting heart rate:** CDC NHSR No. 41 percentiles (public domain), by sex and age band.
+- **Sleep:** the AASM/SRS recommendation of 7 hours or more (adults 18–60).
+- **VO2 max:** decision 10.
+- **Comparison profile:** birth year and a reference group (women's or men's tables, or no comparison). It's entered in Settings and stored in the encrypted database. Comparisons stay off until it's set.
+- **Wording:** neutral position only ("between the 25th and 50th percentiles"). The citation and caveats are always shown, and there are never category labels.
+
+**Definition of done**
+1. Engine tests (Linux):
+   - monthly averages and gates;
+   - day-context findings, including applicable patterns for both correlations and group differences;
+   - percentile placement, including outside the table and at exact values;
+   - age-band lookup;
+   - every new template passing the validator.
+2. Norm values match the primary sources (tests pin a sample of rows), and every norm has a source with a citation.
+3. App: monthly and feeling-off reports in Insights, the comparison profile in Settings, and a reference section in metric detail with the citation and caveats. The Apple Health pointer for VO2 max.
+4. The `VIVRA_NONCOMMERCIAL` build compiles in CI. The default build contains no FRIEND data.
+5. CI is green, and `docs/DEVICE_TEST.md` gains the Phase 4 steps.
 
 ### Phase 5 — Hardening
 - Full export, accessibility (VoiceOver, Dynamic Type), localization groundwork, battery and performance profiling of background sync, App Store privacy labels and HealthKit review notes.
