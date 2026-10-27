@@ -83,10 +83,16 @@ final class VivraUITests: XCTestCase {
 
     private func audit(_ app: XCUIApplication, screenshot name: String?) {
         if let name {
-            let attachment = XCTAttachment(screenshot: app.screenshot())
-            attachment.name = name
-            attachment.lifetime = .keepAlways
-            add(attachment)
+            // Screenshots are only for people to look at. A slow simulator
+            // can time out taking one, which mustn't fail the audit.
+            let bestEffort = XCTExpectedFailure.Options()
+            bestEffort.isStrict = false
+            XCTExpectFailure("Screenshots are best-effort", options: bestEffort) {
+                let attachment = XCTAttachment(screenshot: app.screenshot())
+                attachment.name = name
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            }
         }
         // The tab bar only counts while it's on screen (not under a sheet).
         // Its area includes the scroll edge effect above it, where iOS fades
@@ -96,16 +102,20 @@ final class VivraUITests: XCTestCase {
             tabBar.exists && tabBar.isHittable
             ? tabBar.frame.inset(by: UIEdgeInsets(top: -Self.scrollEdgeEffectHeight, left: 0, bottom: 0, right: 0))
             : .null
-        // The same fade happens under a collapsed (inline) navigation bar once
-        // a screen has scrolled. A large-title bar isn't counted, so nothing
-        // on an unscrolled screen is skipped.
+        // The same fade happens at the top of a scrolled screen: under the
+        // status bar and a collapsed (inline) navigation bar, and just below
+        // it. A large-title bar isn't counted, so nothing on an unscrolled
+        // screen is skipped.
         let navigationBar = app.navigationBars.firstMatch
         let fadedBars =
             navigationBar.exists && navigationBar.frame.height < Self.inlineNavigationBarMaxHeight
             ? [
                 tabBarFrame,
-                navigationBar.frame.inset(
-                    by: UIEdgeInsets(top: 0, left: 0, bottom: -Self.scrollEdgeEffectHeight, right: 0)),
+                // Everything above the bar's bottom edge plus the fade,
+                // including content scrolled off the top of the screen.
+                CGRect(
+                    x: -10_000, y: -10_000, width: 20_000,
+                    height: 10_000 + navigationBar.frame.maxY + Self.scrollEdgeEffectHeight),
             ]
             : [tabBarFrame]
         // A screen that's still updating can make the audit time out (code
