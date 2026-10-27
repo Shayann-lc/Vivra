@@ -6,6 +6,7 @@ stays on the device.
 
 - Plan and architecture: [`docs/PLAN.md`](docs/PLAN.md)
 - Writing rules: [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md)
+- Interface research and rules: [`docs/UX_RESEARCH.md`](docs/UX_RESEARCH.md)
 - Device test steps: [`docs/DEVICE_TEST.md`](docs/DEVICE_TEST.md)
 - Not medical advice. Vivra describes observed patterns only.
 
@@ -32,7 +33,7 @@ App/                 SwiftUI app target
 AppTests/            Tests hosted in the app (real Keychain)
 Shared/              Code in both the app and the widget extension (Quick Log intent)
 Widgets/             Widget and Control extension (opens Quick Log; no data access)
-Packages/VivraCore   Model, sync engine, insight engine, narrative rules; tests on Linux too
+Packages/VivraCore   Model, sync, insights, narrative rules, progress; tests on Linux too
 Packages/VivraStore  Encrypted store: GRDB + SQLCipher, key in the Keychain
 Packages/HealthSync  HealthKit adapter (anchored queries, background delivery)
 Packages/Narrative   On-device Foundation Models narrator

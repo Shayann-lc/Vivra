@@ -5,10 +5,10 @@ and the definition of done for each phase.
 
 ## Current phase
 
-**Phase 2** (all data types, quick logging, full insight engine, daily
-check-in) is done in code, with CI green. Its device steps in
-`docs/DEVICE_TEST.md` are pending with the owner. **Phase 3 (gamification)
-needs the owner's explicit approval before it starts.**
+**Phase 3** (progress and reminders, plus an interface informed by public
+reviews in `docs/UX_RESEARCH.md`) is done in code, with CI green. Its device
+steps in `docs/DEVICE_TEST.md` are pending with the owner. **Phase 4 needs the
+owner's explicit approval before it starts.**
 
 ## Hard rules
 
@@ -32,6 +32,11 @@ needs the owner's explicit approval before it starts.**
 - **Widgets and controls only open the app.** They get no App Group, no
   database access and no health data (PLAN decision 9).
 - **Workout routes aren't read or stored** (PLAN decision 8).
+- **Interface rules** (`docs/UX_RESEARCH.md`): numbers first and compact; no
+  generated text on Today; every value shown next to the person's usual; no
+  composite scores; additive changes only (never remove a view people use).
+- **Progress rewards logging only** and never uses loss language
+  (`ProgressCopy.lossPhrases` is enforced by a test).
 
 ## Conventions
 

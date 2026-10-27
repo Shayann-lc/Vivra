@@ -77,3 +77,19 @@ There are no good or bad days, nights or weeks.
 Never imply that the person did something wrong. "No sleep recorded in the last 7 days"
 is followed by where to check Health access. "You didn't track your sleep" is not
 acceptable.
+
+## Progress and reminders (Phase 3)
+
+Progress rewards logging, never exercise, and never frames anything as a loss.
+The research behind this is in `docs/UX_RESEARCH.md` §5.
+
+- Say **run**, not "streak". Say **pause**, not "freeze".
+- When someone returns after a gap, say **"Welcome back. Nice to see you."**
+  Never mention what ended.
+- Don't use loss language: *streak, lost, lose, broken, reset, fail, missed out,
+  hurry, don't forget, before it's too late*. The full list is
+  `ProgressCopy.lossPhrases`, and a test checks every progress and reminder string
+  against it and against the banned terms above.
+- Draw missed days as empty, neutral circles. Never use red or a cross.
+- Reminders are an invitation ("if you'd like"), with no numbers, no health data
+  and no run counts.

@@ -1,6 +1,6 @@
 # Vivra — Architecture and Phased Plan
 
-Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–2 are done in code, with CI green. The device checks for Phases 1 and 2 (`docs/DEVICE_TEST.md`) are pending with the owner. Phase 3 is approved and in progress.
+Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–3 are done in code, with CI green. The device checks for Phases 1–3 (`docs/DEVICE_TEST.md`) are pending with the owner. Phase 4 is waiting for approval.
 
 ## 1. Decisions already made
 

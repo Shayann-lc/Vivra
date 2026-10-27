@@ -118,3 +118,49 @@ These cover the Phase 2 definition-of-done items that CI can't check (PLAN §7, 
 2. Insights › **Patterns**. ✅ Each line names its days and confidence, with
    "patterns, not causes" in the footer. With too little data it says "No patterns
    yet".
+
+---
+
+# Phase 3 device steps
+
+## A. Today screen
+
+1. Open Vivra. ✅ Today shows, in order:
+   - **At a glance**: last night's sleep, resting heart rate, HRV, steps so far, and
+     mood if logged, each with "usual …" once there's a week of history;
+   - the progress line;
+   - **Quick Log**;
+   - **Worth noticing**, if there is anything;
+   - the detail cards.
+
+   There are no large empty tiles.
+2. Tap **Resting heart rate**. ✅ A 28-day chart with a shaded usual band, your
+   usual, your usual range, days with data, and a plain description.
+3. Tap **Customize**, hide **Body**, and drag **Workouts** to the top. Tap **Done**.
+   ✅ Today reflects the change, and it survives quitting and reopening the app.
+4. ✅ The gear button opens Settings. The tabs are Today, Log, Insights and
+   Progress.
+
+## B. Progress and runs
+
+1. Save a Quick Log. ✅ A short banner shows "Check-in saved · +15 XP". On the first
+   save ever, Vivra offers a daily reminder.
+2. Progress tab ✅ shows Level 1 with an XP bar, today's dot filled, "1-day run",
+   "No pauses saved yet", achievements (First check-in earned), and the daily goal
+   picker.
+3. Set the daily goal to **2**. ✅ Today's line reads "Today: 1 of 2 check-ins".
+   Earlier days keep goal 1.
+4. **Log for yesterday:** Quick Log › **Log for an earlier time** › pick yesterday
+   evening › Save. ✅ Yesterday's dot fills in and the run includes it.
+5. ✅ No screen anywhere says "streak", "lost" or "broken". Missed days are empty
+   grey circles.
+
+## C. Reminders
+
+1. Settings › **Daily Reminder** on, and set the time two minutes from now.
+   Allow notifications.
+2. Don't log, lock the phone, and wait. ✅ One notification: "Vivra" with a gentle
+   line, no numbers and no health data.
+3. Set the time two minutes ahead again, then save a Quick Log before it fires.
+   ✅ No notification today.
+4. Turn the reminder off. ✅ No more notifications.
