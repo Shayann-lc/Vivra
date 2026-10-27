@@ -18,6 +18,10 @@ settings:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     ENABLE_USER_SCRIPT_SANDBOXING: YES
+    # Xcode extracts LocalizedStringKey and String(localized:) text into
+    # App/Resources/Localizable.xcstrings.
+    SWIFT_EMIT_LOC_STRINGS: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
     TARGETED_DEVICE_FAMILY: "1"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
@@ -104,6 +108,19 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(VIVRA_BUNDLE_ID).widgets
         SKIP_INSTALL: YES
 
+  VivraUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - UITests
+    dependencies:
+      - target: Vivra
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(VIVRA_BUNDLE_ID).uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Vivra
+
   VivraTests:
     type: bundle.unit-test
     platform: iOS
@@ -128,6 +145,7 @@ schemes:
       gatherCoverageData: true
       targets:
         - VivraTests
+        - VivraUITests
         - package: VivraCore/VivraLoggingTests
         - package: VivraCore/VivraModelTests
         - package: VivraCore/SyncCoreTests

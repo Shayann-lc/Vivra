@@ -182,7 +182,7 @@ public actor SyncEngine {
         var report = SyncReport()
         for type in types {
             do {
-                report.summaries[type] = try await sync(type)
+                report.summaries[type] = try await Log.sync.measure("Sync type") { try await sync(type) }
             } catch {
                 let failure = SyncFailure(type: type, code: (error as NSError).code)
                 Log.sync.failure("Type sync failed", code: failure.code)

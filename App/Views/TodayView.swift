@@ -137,15 +137,18 @@ private struct GlanceRowView: View {
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
     }
 
     private var caption: String {
-        if row.isSoFar { return "So far today" }
-        if row.metric == .sleepDuration { return row.daysAgo == 0 ? "Last night" : "The night before" }
-        return row.daysAgo == 0 ? "Today" : "Yesterday"
+        if row.isSoFar { return String(localized: "So far today") }
+        if row.metric == .sleepDuration {
+            return row.daysAgo == 0 ? String(localized: "Last night") : String(localized: "The night before")
+        }
+        return row.daysAgo == 0 ? String(localized: "Today") : String(localized: "Yesterday")
     }
 }
 
@@ -159,6 +162,7 @@ private struct ProgressStrip: View {
             HStack(spacing: 12) {
                 Image(systemName: progress.goalMetToday ? "checkmark.circle.fill" : "circle.dashed")
                     .foregroundStyle(progress.goalMetToday ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(ProgressCopy.goal(progress))
                         .font(.subheadline.weight(.semibold))
@@ -170,6 +174,7 @@ private struct ProgressStrip: View {
                 Image(systemName: "chevron.right")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
             }
             .padding()
             .background(.background.secondary, in: .rect(cornerRadius: 16))
@@ -260,6 +265,7 @@ private struct SleepCard: View {
                 .chartXScale(domain: snapshot.days.map { Formatting.weekday($0) })
                 .chartYAxisLabel("Hours")
                 .frame(height: 180)
+                .accessibilityLabel("Sleep by stage over the last 7 days")
 
                 if let last = snapshot.sleep.last {
                     Text("Most recent night: \(Formatting.duration(last.asleep)) asleep")
@@ -327,6 +333,7 @@ private struct HeartCard: View {
             .chartXScale(domain: snapshot.days.map { Formatting.weekday($0) })
             .chartYScale(domain: .automatic(includesZero: false))
             .frame(height: 120)
+            .accessibilityLabel("\(title) over the last 7 days")
         }
     }
 }
@@ -439,6 +446,7 @@ private struct ActivityCard: View {
                 }
                 .chartXScale(domain: snapshot.days.map { Formatting.weekday($0) })
                 .frame(height: 140)
+                .accessibilityLabel("Steps over the last 7 days")
             }
             if let today = snapshot.activity.last(where: { $0.day == snapshot.days.last }),
                 let minutes = today.exerciseMinutes

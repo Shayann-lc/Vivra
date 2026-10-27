@@ -37,8 +37,8 @@ import VivraModel
         #expect(files.count == 11)
         let logsCSV = String(decoding: try #require(files["logs.csv"]), as: UTF8.self)
         #expect(logsCSV.contains("\"lunch, \"\"outside\"\"\""))
-        let json = try #require(
-            JSONSerialization.jsonObject(with: try #require(files["vivra-export.json"])) as? [String: Any])
+        let jsonData = try #require(files["vivra-export.json"])
+        let json = try #require(try JSONSerialization.jsonObject(with: jsonData) as? [String: Any])
         #expect(json["formatVersion"] as? Int == 1)
         #expect((json["quantitySamples"] as? [Any])?.count == 1)
     }

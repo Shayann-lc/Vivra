@@ -137,6 +137,7 @@ struct LockView: View {
                 Image(systemName: "lock.fill")
                     .font(.largeTitle)
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
                 Text("Vivra is locked")
                     .font(.title2.bold())
                 Button("Unlock") { Task { await lock.unlock() } }

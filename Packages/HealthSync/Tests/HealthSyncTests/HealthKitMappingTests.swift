@@ -60,6 +60,8 @@ import VivraModel
             _ = HealthKitDataSource.frequency(for: type)
         }
         #expect(HealthKitMapping.sampleType(for: .workouts) == HKWorkoutType.workoutType())
+        #expect(HealthKitDataSource.frequency(for: .heartRate) == .daily)
+        #expect(HealthKitDataSource.frequency(for: .sleep) == .immediate)
     }
 
     @Test func percentagesAreStoredAsZeroToHundred() {

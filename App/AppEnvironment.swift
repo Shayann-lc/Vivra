@@ -61,3 +61,28 @@ extension AppEnvironment {
 struct SystemClock: Clock {
     var now: Date { Date() }
 }
+
+#if DEBUG
+    extension AppEnvironment {
+        /// The launch argument UI tests pass.
+        static let uiTestingArgument = "-ui-testing"
+
+        /// For UI tests: fresh storage on every launch, no HealthKit prompts,
+        /// no language model and no notifications. Debug builds only.
+        static func uiTesting() -> AppEnvironment {
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+                "UITesting", isDirectory: true)
+            try? FileManager.default.removeItem(at: directory)
+            return AppEnvironment(
+                storeDirectory: { directory },
+                keychainService: "app.vivra.uitesting.database-key",
+                health: nil,
+                clock: SystemClock(),
+                calendar: { DayCalendar(Calendar.autoupdatingCurrent) },
+                makeNarrator: { nil },
+                ownBundleIdentifier: Bundle.main.bundleIdentifier,
+                reminders: nil
+            )
+        }
+    }
+#endif

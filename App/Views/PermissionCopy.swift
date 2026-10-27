@@ -16,34 +16,52 @@ extension PermissionGroup {
 
     var title: String {
         switch self {
-        case .sleep: "Sleep"
-        case .heart: "Heart"
-        case .activity: "Activity"
-        case .workouts: "Workouts"
-        case .mind: "State of Mind"
-        case .nutrition: "Nutrition and Hydration"
-        case .body: "Body Measurements"
+        case .sleep: String(localized: "Sleep")
+        case .heart: String(localized: "Heart")
+        case .activity: String(localized: "Activity")
+        case .workouts: String(localized: "Workouts")
+        case .mind: String(localized: "State of Mind")
+        case .nutrition: String(localized: "Nutrition and Hydration")
+        case .body: String(localized: "Body Measurements")
         }
     }
 
     var explanation: String {
         switch self {
         case .sleep:
-            "Vivra reads your sleep stages and time in bed to show how long you sleep and how it lines up with the rest of your data."
+            String(
+                localized:
+                    "Vivra reads your sleep stages and time in bed to show how long you sleep and how it lines up with the rest of your data."
+            )
         case .heart:
-            "Vivra reads heart rate, resting heart rate, heart rate variability, walking heart rate and VO2 max to show your trends. "
-                + "It also lists ECG recordings and irregular rhythm notifications as Apple Health recorded them, without interpreting them."
+            String(
+                localized:
+                    "Vivra reads heart rate, resting heart rate, heart rate variability, walking heart rate and VO2 max to show your trends. It also lists ECG recordings and irregular rhythm notifications as Apple Health recorded them, without interpreting them."
+            )
         case .activity:
-            "Vivra reads steps, active and resting energy, exercise minutes, walking and running distance and stand hours."
+            String(
+                localized:
+                    "Vivra reads steps, active and resting energy, exercise minutes, walking and running distance and stand hours."
+            )
         case .workouts:
-            "Vivra reads your workouts (type, duration, energy and distance) to see how they line up with your sleep and heart data. "
-                + "It doesn't read workout routes."
+            String(
+                localized:
+                    "Vivra reads your workouts (type, duration, energy and distance) to see how they line up with your sleep and heart data. It doesn't read workout routes."
+            )
         case .mind:
-            "Vivra reads State of Mind entries and mindful minutes, alongside the mood, energy and stress you log in Vivra."
+            String(
+                localized:
+                    "Vivra reads State of Mind entries and mindful minutes, alongside the mood, energy and stress you log in Vivra."
+            )
         case .nutrition:
-            "Vivra reads what apps such as MyFitnessPal or Cronometer save to Apple Health: food energy, protein, carbohydrates, fat, water, caffeine and alcoholic drinks."
+            String(
+                localized:
+                    "Vivra reads what apps such as MyFitnessPal or Cronometer save to Apple Health: food energy, protein, carbohydrates, fat, water, caffeine and alcoholic drinks."
+            )
         case .body:
-            "Vivra reads weight, body fat, respiratory rate, blood oxygen and sleeping wrist temperature."
+            String(
+                localized:
+                    "Vivra reads weight, body fat, respiratory rate, blood oxygen and sleeping wrist temperature.")
         }
     }
 }

@@ -72,9 +72,9 @@ enum ComparisonChoice: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .none: "Don't compare"
-        case .women: "Women's reference data"
-        case .men: "Men's reference data"
+        case .none: String(localized: "Don't compare")
+        case .women: String(localized: "Women's reference data")
+        case .men: String(localized: "Men's reference data")
         }
     }
 
@@ -155,6 +155,7 @@ final class AppModel {
     /// The last 90+ days, loaded once per refresh and shared by patterns, the
     /// glance and metric detail.
     @ObservationIgnored private var analysisCache: HealthDataset?
+    @ObservationIgnored private var pendingRefresh: Task<Void, Never>?
 
     init(environment: AppEnvironment, defaults: UserDefaults, defaultsDomain: String?) {
         self.environment = environment
@@ -171,6 +172,21 @@ final class AppModel {
 
     static func live() -> AppModel {
         AppModel(environment: .live, defaults: .standard, defaultsDomain: Bundle.main.bundleIdentifier)
+    }
+
+    /// The live model, or in a Debug build launched by the UI tests, one with
+    /// fresh storage and preferences.
+    static func forLaunch(arguments: [String] = ProcessInfo.processInfo.arguments) -> AppModel {
+        #if DEBUG
+            if arguments.contains(AppEnvironment.uiTestingArgument) {
+                let suiteName = "app.vivra.uitesting"
+                UserDefaults().removePersistentDomain(forName: suiteName)
+                if let defaults = UserDefaults(suiteName: suiteName) {
+                    return AppModel(environment: .uiTesting(), defaults: defaults, defaultsDomain: suiteName)
+                }
+            }
+        #endif
+        return live()
     }
 
     var isHealthAvailable: Bool { environment.health != nil }
@@ -288,13 +304,27 @@ final class AppModel {
         await start()
         guard phase == .ready, let syncEngine else { return }
         _ = await syncEngine.sync([type])
-        await refreshDashboard()
+        scheduleDashboardRefresh()
     }
+
+    /// Background deliveries often arrive for several types together. One
+    /// refresh once they settle replaces one refresh per type. The data is
+    /// already saved by then, and opening the app refreshes everything.
+    private func scheduleDashboardRefresh() {
+        pendingRefresh?.cancel()
+        pendingRefresh = Task { [weak self] in
+            try? await Task.sleep(for: Self.refreshCoalescingDelay)
+            guard !Task.isCancelled else { return }
+            await self?.refreshDashboard()
+        }
+    }
+
+    static let refreshCoalescingDelay = Duration.seconds(2)
 
     func sync() async {
         guard phase == .ready, let syncEngine, !isSyncing else { return }
         isSyncing = true
-        let report = await syncEngine.sync()
+        let report = await Log.sync.measure("Sync all") { await syncEngine.sync() }
         lastSyncHadFailures = !report.failures.isEmpty
         isSyncing = false
         await refresh()
@@ -302,10 +332,13 @@ final class AppModel {
 
     /// Reloads everything shown on screen.
     func refresh() async {
-        await refreshDashboard()
-        await refreshTodayLogs()
-        await refreshAnalysis()
-        await refreshProgress()
+        pendingRefresh?.cancel()
+        await Log.app.measure("Refresh") {
+            await refreshDashboard()
+            await refreshTodayLogs()
+            await refreshAnalysis()
+            await refreshProgress()
+        }
     }
 
     func refreshDashboard() async {
@@ -351,8 +384,10 @@ final class AppModel {
             analysisCache = dataset
             let clock = environment.clock
             let calendar = environment.calendar()
-            patterns = PatternList.build(dataset, clock: clock, calendar: calendar, sourcePolicy: reportPolicy)
-            glance = TodayGlance.build(dataset, clock: clock, calendar: calendar, sourcePolicy: reportPolicy)
+            await Log.insights.measure("Patterns and glance") {
+                patterns = PatternList.build(dataset, clock: clock, calendar: calendar, sourcePolicy: reportPolicy)
+                glance = TodayGlance.build(dataset, clock: clock, calendar: calendar, sourcePolicy: reportPolicy)
+            }
         } catch {
             Log.app.failure("Analysis load failed", code: (error as NSError).code)
         }
@@ -389,7 +424,7 @@ final class AppModel {
         let clock = environment.clock
         do {
             guard let dataset = try await analysisDataset() else { return }
-            let report: InsightReport =
+            let report: InsightReport = await Log.insights.measure("Build report") {
                 switch kind {
                 case .weekly:
                     WeeklyReportBuilder.build(dataset, clock: clock, calendar: calendar, sourcePolicy: reportPolicy)
@@ -400,7 +435,10 @@ final class AppModel {
                 case .feelingOff:
                     FeelingOffBuilder.build(dataset, clock: clock, calendar: calendar, sourcePolicy: reportPolicy)
                 }
-            let summary = await SummaryComposer.compose(report, narrator: environment.makeNarrator())
+            }
+            let summary = await Log.narrative.measure("Compose summary") {
+                await SummaryComposer.compose(report, narrator: environment.makeNarrator())
+            }
             let stored = StoredReport(
                 kind: kind,
                 periodStart: report.periodStart,

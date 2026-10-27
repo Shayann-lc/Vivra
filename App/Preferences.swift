@@ -11,9 +11,9 @@ enum AppLockTimeout: Int, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .immediately: "Immediately"
-        case .oneMinute: "After 1 minute"
-        case .fiveMinutes: "After 5 minutes"
+        case .immediately: String(localized: "Immediately")
+        case .oneMinute: String(localized: "After 1 minute")
+        case .fiveMinutes: String(localized: "After 5 minutes")
         }
     }
 }
@@ -153,12 +153,12 @@ enum TodayCard: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .sleep: "Sleep"
-        case .heart: "Heart"
-        case .activity: "Activity"
-        case .workouts: "Workouts"
-        case .logged: "Logged today"
-        case .body: "Body"
+        case .sleep: String(localized: "Sleep")
+        case .heart: String(localized: "Heart")
+        case .activity: String(localized: "Activity")
+        case .workouts: String(localized: "Workouts")
+        case .logged: String(localized: "Logged today")
+        case .body: String(localized: "Body")
         }
     }
 }

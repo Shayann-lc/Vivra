@@ -155,16 +155,16 @@ private struct LogRow: View {
 
     private var description: String {
         switch entry.kind {
-        case .mood: "Mood \(entry.scale ?? 0) of 5"
-        case .energy: "Energy \(entry.scale ?? 0) of 5"
-        case .stress: "Stress \(entry.scale ?? 0) of 5"
-        case .meal: "Meal"
-        case .note: entry.note ?? "Note"
+        case .mood: String(localized: "Mood \(entry.scale ?? 0) of 5")
+        case .energy: String(localized: "Energy \(entry.scale ?? 0) of 5")
+        case .stress: String(localized: "Stress \(entry.scale ?? 0) of 5")
+        case .meal: String(localized: "Meal")
+        case .note: entry.note ?? String(localized: "Note")
         case .drink:
             if let drink = entry.drink, let amount = entry.amount {
                 drink.servingsText(Int((amount / drink.amountPerServing).rounded()))
             } else {
-                "Drink"
+                String(localized: "Drink")
             }
         }
     }
@@ -173,10 +173,10 @@ private struct LogRow: View {
 extension Drink {
     var title: String {
         switch self {
-        case .water: "Water"
-        case .coffee: "Coffee"
-        case .tea: "Tea"
-        case .alcohol: "Alcohol"
+        case .water: String(localized: "Water")
+        case .coffee: String(localized: "Coffee")
+        case .tea: String(localized: "Tea")
+        case .alcohol: String(localized: "Alcohol")
         }
     }
 
@@ -191,10 +191,12 @@ extension Drink {
 
     func servingsText(_ servings: Int) -> String {
         switch self {
-        case .water: servings == 1 ? "1 glass of water" : "\(servings) glasses of water"
-        case .coffee: servings == 1 ? "1 cup of coffee" : "\(servings) cups of coffee"
-        case .tea: servings == 1 ? "1 cup of tea" : "\(servings) cups of tea"
-        case .alcohol: servings == 1 ? "1 drink" : "\(servings) drinks"
+        case .water:
+            servings == 1 ? String(localized: "1 glass of water") : String(localized: "\(servings) glasses of water")
+        case .coffee:
+            servings == 1 ? String(localized: "1 cup of coffee") : String(localized: "\(servings) cups of coffee")
+        case .tea: servings == 1 ? String(localized: "1 cup of tea") : String(localized: "\(servings) cups of tea")
+        case .alcohol: servings == 1 ? String(localized: "1 drink") : String(localized: "\(servings) drinks")
         }
     }
 }

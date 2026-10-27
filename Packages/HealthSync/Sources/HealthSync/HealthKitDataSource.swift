@@ -201,10 +201,13 @@ public final class HealthKitDataSource: HealthDataSource, @unchecked Sendable {
         for query in queries { store.stop(query) }
     }
 
+    /// Raw heart rate is the highest-volume type and no screen shows it, so
+    /// it only wakes the app daily (PLAN Phase 5). Opening the app still
+    /// syncs everything.
     static func frequency(for type: HealthDataType) -> HKUpdateFrequency {
         switch type {
         case .sleep, .workouts, .stateOfMind, .electrocardiogram, .irregularRhythm, .mindfulSession: .immediate
-        case .vo2Max, .bodyMass, .bodyFatPercentage, .appleSleepingWristTemperature: .daily
+        case .heartRate, .vo2Max, .bodyMass, .bodyFatPercentage, .appleSleepingWristTemperature: .daily
         default: .hourly
         }
     }

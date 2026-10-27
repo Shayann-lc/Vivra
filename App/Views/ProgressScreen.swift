@@ -143,6 +143,7 @@ private struct AchievementsSection: View {
                         .font(.title3)
                         .frame(width: 32)
                         .foregroundStyle(state.isUnlocked ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(state.achievement.title)
                             .font(.subheadline.weight(state.isUnlocked ? .semibold : .regular))

@@ -98,23 +98,29 @@ private struct ReportBlock: View {
 
     private var title: String {
         switch kind {
-        case .daily: "Check-in"
-        case .weekly: "Weekly Summary"
-        case .monthly: "Monthly Summary"
-        case .feelingOff: "Look at Today"
+        case .daily: String(localized: "Check-in")
+        case .weekly: String(localized: "Weekly Summary")
+        case .monthly: String(localized: "Monthly Summary")
+        case .feelingOff: String(localized: "Look at Today")
         }
     }
 
     private var introduction: String {
         switch kind {
         case .daily:
-            "A short look at last night and today next to your usual, plus anything unusual and one pattern to notice."
+            String(
+                localized:
+                    "A short look at last night and today next to your usual, plus anything unusual and one pattern to notice."
+            )
         case .weekly:
-            "A summary of your last 7 days, with patterns and trends from recent weeks."
+            String(localized: "A summary of your last 7 days, with patterns and trends from recent weeks.")
         case .monthly:
-            "A deeper look at your last 30 days next to the 30 before, with every pattern and trend Vivra has found."
+            String(
+                localized:
+                    "A deeper look at your last 30 days next to the 30 before, with every pattern and trend Vivra has found."
+            )
         case .feelingOff:
-            "Things in today's data that stood out."
+            String(localized: "Things in today's data that stood out.")
         }
     }
 }
@@ -150,30 +156,42 @@ struct ReportSection: View {
 
     private var header: String {
         switch report.kind {
-        case .daily: "Check-in · " + report.createdAt.formatted(date: .abbreviated, time: .shortened)
-        case .weekly: "Weekly summary · " + Formatting.dayRange(report.periodStart, report.periodEnd)
-        case .monthly: "Monthly summary · " + Formatting.dayRange(report.periodStart, report.periodEnd)
-        case .feelingOff: "Asked " + report.createdAt.formatted(date: .abbreviated, time: .shortened)
+        case .daily: String(localized: "Check-in · \(report.createdAt.formatted(date: .abbreviated, time: .shortened))")
+        case .weekly: String(localized: "Weekly summary · \(Formatting.dayRange(report.periodStart, report.periodEnd))")
+        case .monthly:
+            String(localized: "Monthly summary · \(Formatting.dayRange(report.periodStart, report.periodEnd))")
+        case .feelingOff: String(localized: "Asked \(report.createdAt.formatted(date: .abbreviated, time: .shortened))")
         }
     }
 
     private var emptyText: String {
         switch report.kind {
-        case .daily: "There isn't enough recent data for a check-in yet. It needs at least a week of history."
-        case .weekly: "There isn't enough data from the last 7 days yet. Summaries need at least 3 days of a metric."
-        case .monthly: "There isn't enough data from the last 30 days yet. Monthly summaries need 10 days of a metric."
+        case .daily:
+            String(localized: "There isn't enough recent data for a check-in yet. It needs at least a week of history.")
+        case .weekly:
+            String(
+                localized:
+                    "There isn't enough data from the last 7 days yet. Summaries need at least 3 days of a metric.")
+        case .monthly:
+            String(
+                localized:
+                    "There isn't enough data from the last 30 days yet. Monthly summaries need 10 days of a metric.")
         case .feelingOff:
-            "Today's data looks close to your usual, and no known pattern applies. That's useful to know too."
+            String(
+                localized:
+                    "Today's data looks close to your usual, and no known pattern applies. That's useful to know too.")
         }
     }
 
     private func generatorNote(_ generator: NarrativeGenerator) -> String {
         switch generator {
         case .onDeviceModel:
-            "Written on this iPhone by Apple Intelligence, from numbers Vivra calculated."
+            String(localized: "Written on this iPhone by Apple Intelligence, from numbers Vivra calculated.")
         case .template:
-            "Written from Vivra's templates, from numbers Vivra calculated. "
-                + "Apple Intelligence wasn't available, or its draft didn't pass Vivra's checks."
+            String(
+                localized:
+                    "Written from Vivra's templates, from numbers Vivra calculated. Apple Intelligence wasn't available, or its draft didn't pass Vivra's checks."
+            )
         }
     }
 }

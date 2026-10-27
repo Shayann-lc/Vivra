@@ -46,6 +46,23 @@ public struct Log: Sendable {
         #endif
     }
 
+    /// Runs `operation` inside a signpost interval, so it shows up in
+    /// Instruments (os_signpost) for profiling. The name is a `StaticString`
+    /// like every other log message. A no-op wrapper where `os` isn't
+    /// available.
+    public func measure<T>(
+        _ name: StaticString,
+        isolation: isolated (any Actor)? = #isolation,
+        _ operation: () async throws -> T
+    ) async rethrows -> T {
+        #if canImport(os)
+            let signposter = OSSignposter(logger: logger)
+            let state = signposter.beginInterval(name, id: signposter.makeSignpostID())
+            defer { signposter.endInterval(name, state) }
+        #endif
+        return try await operation()
+    }
+
     /// Records a failure with a numeric code (an `OSStatus`, SQLite result
     /// code or `NSError.code`). Never pass error descriptions: they can
     /// contain file paths or values.

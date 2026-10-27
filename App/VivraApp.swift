@@ -13,7 +13,7 @@ struct VivraApp: App {
 }
 
 final class AppDelegate: NSObject, UIApplicationDelegate {
-    let model = AppModel.live()
+    let model = AppModel.forLaunch()
 
     func application(
         _ application: UIApplication,
