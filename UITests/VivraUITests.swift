@@ -9,6 +9,8 @@ import XCTest
 final class VivraUITests: XCTestCase {
     private let timeout: TimeInterval = 30
     private static let scrollEdgeEffectHeight: CGFloat = 60
+    /// `com.apple.xcode.xctest.accessibilityAudit` "Audit failed to complete in time".
+    private static let auditTimedOut = -56
     /// Taller than an inline navigation bar, shorter than a large-title one.
     private static let inlineNavigationBarMaxHeight: CGFloat = 70
 
@@ -106,20 +108,28 @@ final class VivraUITests: XCTestCase {
                     by: UIEdgeInsets(top: 0, left: 0, bottom: -Self.scrollEdgeEffectHeight, right: 0)),
             ]
             : [tabBarFrame]
-        do {
-            try app.performAccessibilityAudit { issue in
-                // Every issue is named in the test log with its element, and
-                // the ones ignored say why, so CI shows exactly what to fix.
-                let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)'" } ?? "no element"
-                let reason = Self.knownFalsePositive(issue, fadedBars: fadedBars)
-                XCTContext.runActivity(
-                    named: "Audit issue\(reason.map { " (ignored: \($0))" } ?? ""): \(issue.compactDescription) on "
-                        + "\(element): \(issue.detailedDescription)"
-                ) { _ in }
-                return reason != nil
+        // A screen that's still updating can make the audit time out (code
+        // -56). Give it a moment and try once more before failing.
+        for attempt in 1...2 {
+            do {
+                try app.performAccessibilityAudit { issue in
+                    // Every issue is named in the test log with its element,
+                    // and the ones ignored say why, so CI shows what to fix.
+                    let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)'" } ?? "no element"
+                    let reason = Self.knownFalsePositive(issue, fadedBars: fadedBars)
+                    XCTContext.runActivity(
+                        named: "Audit issue\(reason.map { " (ignored: \($0))" } ?? ""): \(issue.compactDescription) on "
+                            + "\(element): \(issue.detailedDescription)"
+                    ) { _ in }
+                    return reason != nil
+                }
+                return
+            } catch let error as NSError where error.code == Self.auditTimedOut && attempt == 1 {
+                _ = XCTWaiter.wait(for: [XCTestExpectation(description: "Let the screen settle")], timeout: 3)
+            } catch {
+                XCTFail("Accessibility audit could not run: \(error)")
+                return
             }
-        } catch {
-            XCTFail("Accessibility audit could not run: \(error)")
         }
     }
 
