@@ -7,7 +7,7 @@ import XCTest
 /// exports as an artifact so the app can be seen without Xcode.
 @MainActor
 final class VivraUITests: XCTestCase {
-    private let timeout: TimeInterval = 20
+    private let timeout: TimeInterval = 30
     private static let scrollEdgeEffectHeight: CGFloat = 60
 
     func testOnboardingAndEveryTabPassTheAccessibilityAudit() throws {
@@ -17,37 +17,52 @@ final class VivraUITests: XCTestCase {
         app.launchArguments = ["-ui-testing"]
         app.launch()
 
-        tap(app.buttons["Continue"], auditing: app, screenshot: "01 Welcome")
-        tap(app.buttons["I Understand"], auditing: app, screenshot: "02 Disclaimer")
-
+        tap(app.buttons["Continue"], until: app.buttons["I Understand"], auditing: app, screenshot: "01 Welcome")
         let notNow = app.buttons["Not Now"]
-        XCTAssertTrue(notNow.waitForExistence(timeout: timeout))
+        tap(app.buttons["I Understand"], until: notNow, auditing: app, screenshot: "02 Disclaimer")
+
         audit(app, screenshot: "03 Permission")
         let goToDashboard = app.buttons["Go to Dashboard"]
         while notNow.exists && !goToDashboard.exists {
             notNow.tap()
-            _ = goToDashboard.waitForExistence(timeout: 1)
+            _ = goToDashboard.waitForExistence(timeout: 2)
         }
-        tap(goToDashboard, auditing: app, screenshot: "04 All set")
+        let todayTab = app.tabBars.buttons["Today"]
+        tap(goToDashboard, until: todayTab, auditing: app, screenshot: "04 All set")
 
         for (number, tab) in [("05", "Today"), ("06", "Log"), ("07", "Insights"), ("08", "Progress")] {
             let button = app.tabBars.buttons[tab]
             XCTAssertTrue(button.waitForExistence(timeout: timeout), "\(tab) tab")
-            button.tap()
+            for _ in 1...3 where !button.isSelected {
+                button.tap()
+                let selected = XCTNSPredicateExpectation(
+                    predicate: NSPredicate(format: "isSelected == true"), object: button)
+                _ = XCTWaiter.wait(for: [selected], timeout: 5)
+            }
             audit(app, screenshot: "\(number) \(tab)")
         }
 
-        app.tabBars.buttons["Today"].tap()
-        tap(app.buttons["Settings"], auditing: app, screenshot: nil)
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: timeout))
+        todayTab.tap()
+        tap(app.buttons["Settings"], until: app.navigationBars["Settings"], auditing: app, screenshot: nil)
         audit(app, screenshot: "09 Settings")
     }
 
-    /// Audits the current screen, then taps the element.
-    private func tap(_ element: XCUIElement, auditing app: XCUIApplication, screenshot name: String?) {
+    /// Audits the current screen, then taps the element until `next`
+    /// appears. CI simulators can be slow enough to drop a tap made while
+    /// the app is still settling, so it tries up to three times.
+    private func tap(
+        _ element: XCUIElement,
+        until next: XCUIElement,
+        auditing app: XCUIApplication,
+        screenshot name: String?
+    ) {
         XCTAssertTrue(element.waitForExistence(timeout: timeout), element.description)
         audit(app, screenshot: name)
-        element.tap()
+        for _ in 1...3 {
+            if element.exists { element.tap() }
+            if next.waitForExistence(timeout: timeout) { return }
+        }
+        XCTFail("\(next.description) didn't appear after tapping \(element.description)")
     }
 
     private func audit(_ app: XCUIApplication, screenshot name: String?) {
