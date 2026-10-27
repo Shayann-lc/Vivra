@@ -157,7 +157,7 @@ import Testing
         draft.mood = 4
         draft.note = "lunch, \"outside\""
         #expect(await harness.model.saveQuickLog(draft))
-        await harness.model.setGoal(5)
+        await harness.model.setGoal(2)
         await harness.model.createReport(.daily)
 
         let export = try #require(await harness.model.prepareExport())

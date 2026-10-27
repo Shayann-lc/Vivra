@@ -110,7 +110,6 @@ struct OnboardingView: View {
                 .accessibilityAddTraits(.isHeader)
             Text(text)
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
         }
     }
 }

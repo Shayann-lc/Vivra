@@ -9,7 +9,8 @@ final class VivraUITests: XCTestCase {
     private let timeout: TimeInterval = 20
 
     func testOnboardingAndEveryTabPassTheAccessibilityAudit() throws {
-        continueAfterFailure = false
+        // Keep going after an audit issue, so one run reports every screen.
+        continueAfterFailure = true
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing"]
         app.launch()
@@ -55,7 +56,15 @@ final class VivraUITests: XCTestCase {
             add(attachment)
         }
         do {
-            try app.performAccessibilityAudit()
+            try app.performAccessibilityAudit { issue in
+                // Each issue is named in the test log with its element, so
+                // CI shows exactly what to fix.
+                let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)'" } ?? "no element"
+                XCTContext.runActivity(
+                    named: "Audit issue: \(issue.compactDescription) on \(element): \(issue.detailedDescription)"
+                ) { _ in }
+                return false
+            }
         } catch {
             XCTFail("Accessibility audit could not run: \(error)")
         }
