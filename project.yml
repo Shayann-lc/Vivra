@@ -43,7 +43,9 @@ targets:
     platform: iOS
     sources:
       - App
+      - Shared
     dependencies:
+      - target: VivraWidgets
       - package: VivraCore
         product: VivraLogging
       - package: VivraCore
@@ -68,13 +70,33 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Vivra
         INFOPLIST_KEY_NSHealthShareUsageDescription: >-
-          Vivra reads your sleep, heart and workout data to show your trends and find patterns.
-          Your data stays on this iPhone.
+          Vivra reads your sleep, heart, activity, mood, nutrition and body data to show your trends and find
+          patterns. Your data stays on this iPhone.
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: >-
+          If you turn it on in Settings, Vivra saves the mood and drinks you log to Apple Health so other apps can
+          use them.
         INFOPLIST_KEY_NSFaceIDUsageDescription: Vivra uses Face ID to unlock the app when App Lock is on.
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         ASSETCATALOG_COMPILER_APPICON_NAME: ""
+
+  VivraWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Widgets
+      - Shared
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: Vivra
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(VIVRA_BUNDLE_ID).widgets
+        SKIP_INSTALL: YES
 
   VivraTests:
     type: bundle.unit-test

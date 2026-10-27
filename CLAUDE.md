@@ -5,10 +5,10 @@ and the definition of done for each phase.
 
 ## Current phase
 
-**Phase 1** (HealthKit sync, dashboard, weekly summary) is approved and in
-progress. Its definition of done is in PLAN §7, and the device steps are in
-`docs/DEVICE_TEST.md`. **Phase 2 needs the owner's explicit approval before it
-starts.**
+**Phase 2** (all data types, quick logging, full insight engine, daily
+check-in) is approved and in progress. Its design and definition of done are
+in PLAN §7, and the device steps are in `docs/DEVICE_TEST.md`. **Phase 3
+needs the owner's explicit approval before it starts.**
 
 ## Hard rules
 
@@ -29,6 +29,9 @@ starts.**
 - **Never edit `Vendor/GRDB/GRDB` or `Vendor/GRDB/Sources` by hand.** Use
   `scripts/vendor-grdb.sh`.
 - **Never edit a shipped migration.** Always add a new one.
+- **Widgets and controls only open the app.** They get no App Group, no
+  database access and no health data (PLAN decision 9).
+- **Workout routes aren't read or stored** (PLAN decision 8).
 
 ## Conventions
 

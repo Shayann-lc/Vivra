@@ -6,7 +6,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 # First-party Swift sources. Vendor/ is third-party and excluded.
-roots=(App AppTests Packages)
+roots=(App AppTests Shared Widgets Packages)
 failed=0
 
 fail() {

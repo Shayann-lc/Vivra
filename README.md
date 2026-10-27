@@ -30,6 +30,8 @@ ID and team.
 ```
 App/                 SwiftUI app target
 AppTests/            Tests hosted in the app (real Keychain)
+Shared/              Code in both the app and the widget extension (Quick Log intent)
+Widgets/             Widget and Control extension (opens Quick Log; no data access)
 Packages/VivraCore   Model, sync engine, insight engine, narrative rules; tests on Linux too
 Packages/VivraStore  Encrypted store: GRDB + SQLCipher, key in the Keychain
 Packages/HealthSync  HealthKit adapter (anchored queries, background delivery)
@@ -43,7 +45,7 @@ scripts/             Guard checks, vendoring, CI helpers
 
 ```sh
 scripts/check-guards.sh                                      # privacy/determinism rules
-swift format lint --strict --recursive App AppTests Packages # formatting
+swift format lint --strict --recursive App AppTests Shared Widgets Packages # formatting
 swift test --package-path Packages/VivraCore                 # core tests (macOS or Linux)
 xcodebuild test -project Vivra.xcodeproj -scheme Vivra \
   -destination "$(scripts/sim-destination.sh)"              # everything, on a simulator

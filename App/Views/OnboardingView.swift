@@ -51,7 +51,10 @@ struct OnboardingView: View {
                     Text("Apple Health isn't available on this device.")
                         .foregroundStyle(.secondary)
                 }
-                Button("Not Now") { step = next(after: group) }
+                Button("Not Now") {
+                    model.markRequested(group)
+                    step = next(after: group)
+                }
 
             case .finish:
                 page(
@@ -86,35 +89,6 @@ struct OnboardingView: View {
             Text(text)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
-        }
-    }
-}
-
-extension PermissionGroup {
-    fileprivate var symbol: String {
-        switch self {
-        case .sleep: "bed.double"
-        case .heart: "heart"
-        case .workouts: "figure.run"
-        }
-    }
-
-    fileprivate var title: String {
-        switch self {
-        case .sleep: "Sleep"
-        case .heart: "Heart"
-        case .workouts: "Workouts"
-        }
-    }
-
-    fileprivate var explanation: String {
-        switch self {
-        case .sleep:
-            "Vivra reads your sleep stages and time in bed to show how long you sleep and how it lines up with the rest of your data."
-        case .heart:
-            "Vivra reads heart rate, resting heart rate, heart rate variability, walking heart rate and VO2 max to show your trends."
-        case .workouts:
-            "Vivra reads your workouts (type, duration, energy and distance) to see how they line up with your sleep and heart data."
         }
     }
 }

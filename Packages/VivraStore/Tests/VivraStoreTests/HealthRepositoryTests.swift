@@ -107,18 +107,21 @@ private func sample(_ kind: QuantityKind = .restingHeartRate, offset: TimeInterv
                     metric: .restingHeartRate, thisWeek: 58, thisWeekDays: 7, previousWeek: nil, previousWeekDays: 0)
             )
         )
-        let report = WeeklyReport(
+        let report = InsightReport(
+            kind: .weekly,
             periodStart: Day(year: 2026, month: 3, day: 25),
             periodEnd: Day(year: 2026, month: 3, day: 31),
             findings: [finding]
         )
         let summary = await SummaryComposer.compose(report, narrator: nil)
         let stored = StoredReport(
+            kind: .weekly,
             periodStart: report.periodStart, periodEnd: report.periodEnd, createdAt: base, summary: summary)
 
-        #expect(try await repository.latestReport() == nil)
+        #expect(try await repository.latestReport(kind: .weekly) == nil)
         try await repository.saveReport(stored)
 
-        #expect(try await repository.latestReport() == stored)
+        #expect(try await repository.latestReport(kind: .weekly) == stored)
+        #expect(try await repository.latestReport(kind: .daily) == nil)
     }
 }

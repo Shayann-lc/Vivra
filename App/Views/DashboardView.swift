@@ -1,10 +1,12 @@
 import Charts
 import InsightEngine
+import NarrativeCore
 import SwiftUI
 import VivraModel
 
 struct DashboardView: View {
     let model: AppModel
+    @State private var reviewingPermissions = false
 
     var body: some View {
         NavigationStack {
@@ -18,10 +20,16 @@ struct DashboardView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     }
+                    if !model.pendingPermissionGroups.isEmpty {
+                        NewPermissionsCard { reviewingPermissions = true }
+                    }
                     if let snapshot = model.dashboard {
+                        TodayCard(snapshot: snapshot)
                         SleepCard(snapshot: snapshot)
-                        HeartCard(snapshot: snapshot)
+                        HeartCard(snapshot: snapshot, recordings: model.heartRecordings)
+                        ActivityCard(snapshot: snapshot)
                         WorkoutsCard(snapshot: snapshot)
+                        BodyCard(snapshot: snapshot)
                     } else {
                         ProgressView()
                     }
@@ -33,6 +41,7 @@ struct DashboardView: View {
             }
             .navigationTitle("Last 7 Days")
             .refreshable { await model.sync() }
+            .sheet(isPresented: $reviewingPermissions) { PermissionReviewView(model: model) }
             .toolbar {
                 if model.isSyncing { ProgressView() }
             }
@@ -113,6 +122,7 @@ private struct SleepCard: View {
 
 private struct HeartCard: View {
     let snapshot: DashboardSnapshot
+    let recordings: HeartRecordings
 
     private struct Point: Identifiable {
         let day: Day
@@ -137,6 +147,14 @@ private struct HeartCard: View {
                         day.heartRateVariability.map { Point(day: day.day, value: $0) }
                     }
                 )
+            }
+            if !recordings.isEmpty {
+                NavigationLink {
+                    HeartRecordingsView(recordings: recordings)
+                } label: {
+                    Label("Heart recordings from Apple Health", systemImage: "waveform.path.ecg")
+                        .font(.subheadline)
+                }
             }
         }
     }
@@ -200,5 +218,145 @@ private struct WorkoutsCard: View {
                     .measurement(width: .abbreviated, usage: .road)))
         }
         return parts.joined(separator: " · ")
+    }
+}
+
+private struct NewPermissionsCard: View {
+    let action: () -> Void
+
+    var body: some View {
+        Card(title: "More Health data available", symbol: "sparkles") {
+            Text("Vivra can now read activity, State of Mind, nutrition, body measurements and heart recordings.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Button("Review Access", action: action)
+                .buttonStyle(.borderedProminent)
+        }
+    }
+}
+
+private struct TodayCard: View {
+    let snapshot: DashboardSnapshot
+
+    var body: some View {
+        if !snapshot.todayLogged.isEmpty || !snapshot.todayIntake.isEmpty {
+            Card(title: "Today", symbol: "sun.max") {
+                let items = rows
+                ForEach(items, id: \.0) { label, value in
+                    LabeledContent(label, value: value)
+                        .font(.subheadline)
+                }
+            }
+        }
+    }
+
+    private var rows: [(String, String)] {
+        var rows: [(String, String)] = []
+        let labels: [(Metric, String)] = [
+            (.mood, "Mood"), (.energyLevel, "Energy"), (.stressLevel, "Stress"), (.water, "Water"),
+            (.caffeine, "Caffeine (estimated)"), (.alcohol, "Alcohol"),
+        ]
+        for (metric, label) in labels {
+            if let value = snapshot.todayLogged[metric] ?? snapshot.todayIntake[metric] {
+                rows.append((label, FindingFormatter.format(value, metric.unit)))
+            }
+        }
+        return rows
+    }
+}
+
+private struct ActivityCard: View {
+    let snapshot: DashboardSnapshot
+
+    private struct Bar: Identifiable {
+        let day: Day
+        let steps: Double
+        var id: Day { day }
+    }
+
+    var body: some View {
+        Card(title: "Activity", symbol: "figure.walk") {
+            let bars = snapshot.activity.compactMap { day in day.steps.map { Bar(day: day.day, steps: $0) } }
+            if bars.isEmpty {
+                EmptyCardText(text: "No steps recorded in the last 7 days.")
+            } else {
+                Text("Steps")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Chart(bars) { bar in
+                    BarMark(x: .value("Day", Formatting.weekday(bar.day)), y: .value("Steps", bar.steps))
+                }
+                .chartXScale(domain: snapshot.days.map { Formatting.weekday($0) })
+                .frame(height: 140)
+            }
+            if let today = snapshot.activity.last(where: { $0.day == snapshot.days.last }),
+                let minutes = today.exerciseMinutes
+            {
+                Text("Exercise today: \(FindingFormatter.format(minutes, .minutes))")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+private struct BodyCard: View {
+    let snapshot: DashboardSnapshot
+
+    var body: some View {
+        if !snapshot.latestBody.isEmpty {
+            Card(title: "Body", symbol: "figure.stand") {
+                let labels: [(Metric, String)] = [
+                    (.weight, "Weight"), (.bodyFat, "Body fat"), (.respiratoryRate, "Respiratory rate"),
+                    (.bloodOxygen, "Blood oxygen"), (.wristTemperature, "Sleeping wrist temperature"),
+                ]
+                ForEach(labels.filter { snapshot.latestBody[$0.0] != nil }, id: \.0) { metric, label in
+                    let reading = snapshot.latestBody[metric]!
+                    LabeledContent(label) {
+                        VStack(alignment: .trailing) {
+                            Text(FindingFormatter.format(reading.value, metric.unit))
+                            Text(Formatting.weekday(reading.day))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .font(.subheadline)
+                }
+            }
+        }
+    }
+}
+
+struct HeartRecordingsView: View {
+    let recordings: HeartRecordings
+
+    var body: some View {
+        List {
+            Section {
+                Text(Copy.heartRecordingsNote)
+                    .foregroundStyle(.secondary)
+                Label(Copy.professionalNote, systemImage: "info.circle")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            if !recordings.ecgs.isEmpty {
+                Section("ECG recordings") {
+                    ForEach(recordings.ecgs) { ecg in
+                        LabeledContent(
+                            ecg.date.formatted(date: .abbreviated, time: .shortened),
+                            value: Formatting.ecgClassification(ecg.classification)
+                        )
+                    }
+                }
+            }
+            if !recordings.irregularRhythmDates.isEmpty {
+                Section("Irregular rhythm notifications") {
+                    ForEach(recordings.irregularRhythmDates, id: \.self) { date in
+                        Text(date.formatted(date: .abbreviated, time: .shortened))
+                    }
+                }
+            }
+        }
+        .navigationTitle("Heart Recordings")
     }
 }

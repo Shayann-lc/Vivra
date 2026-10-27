@@ -64,3 +64,57 @@ Apple Health data (ideally from an Apple Watch).
 4. **Start Again** opens onboarding.
 
 Item 5 (unit tests and green CI) is checked by CI.
+
+---
+
+# Phase 2 device steps
+
+These cover the Phase 2 definition-of-done items that CI can't check (PLAN §7, Phase 2).
+
+## Setup
+
+- The App ID also needs the widget extension's bundle ID (`<bundle id>.widgets`).
+- Use a phone with some activity, nutrition (any food-logging app), State of Mind and
+  body data in Apple Health, if possible.
+
+## A. New data types and permissions
+
+1. **On a Phase 1 install:** update the app. ✅ The dashboard shows "More Health data
+   available". **Review Access** lists Heart, Activity, State of Mind, Nutrition and
+   Body. Allow each one; when the last is answered, the sheet closes.
+2. **On a fresh install:** ✅ onboarding asks for all seven groups in order.
+3. ✅ The Activity card shows steps. Body shows the latest weight if you have one.
+   Today shows anything logged.
+4. If the phone has ECG recordings, Heart › **Heart recordings from Apple Health**
+   ✅ lists them with Apple's classification wording, the note that Vivra doesn't
+   interpret them, and the professional note.
+
+## B. Quick Log under 10 seconds
+
+1. Log tab: tap mood **4**, press **+** once on Coffee, then **Save**. Time it
+   (✅ under 10 s). The entry appears under **Logged today**, and Dashboard › Today
+   shows Mood 4 out of 5 and Caffeine 95 mg.
+2. Swipe to delete the coffee. ✅ It disappears from both places.
+3. Entry points. Each should open Vivra on the Log tab:
+   - Add the **Quick Log** widget to the Home Screen and tap it.
+   - Add the **Vivra Quick Log** control in Control Center and tap it.
+   - Say or run "Quick log in Vivra" in Shortcuts or Siri.
+   - Add the Lock Screen widget and tap it.
+
+## C. Write-back
+
+1. Settings › **Save Mood and Drinks to Health** › allow in the sheet.
+2. Log mood 2 and 1 coffee. ✅ The Health app shows a State of Mind entry from Vivra
+   (unpleasant side) and 95 mg caffeine from Vivra.
+3. ✅ Dashboard › Today shows caffeine 95 mg, not 190 (no double counting after sync).
+4. Delete both entries in Vivra. ✅ They're gone from the Health app too.
+
+## D. Daily check-in and patterns
+
+1. Insights › **Create Check-in** on an Apple Intelligence device. ✅ It's written by
+   Apple Intelligence. Then turn Apple Intelligence off and create another. ✅ It's
+   written from templates. Both use only numbers that match the dashboard, and
+   neither uses causal or judgemental words.
+2. Insights › **Patterns**. ✅ Each line names its days and confidence, with
+   "patterns, not causes" in the footer. With too little data it says "No patterns
+   yet".

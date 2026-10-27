@@ -28,7 +28,7 @@ jobs:
         run: scripts/check-guards.sh
 
       - name: swift-format lint
-        run: swift format lint --strict --recursive App AppTests Packages
+        run: swift format lint --strict --recursive App AppTests Shared Widgets Packages
 
       - name: VivraCore tests
         run: swift test --package-path Packages/VivraCore

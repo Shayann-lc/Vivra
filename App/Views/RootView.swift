@@ -15,6 +15,9 @@ struct RootView: View {
                 }
             }
             .task { await model.start() }
+            .onOpenURL { url in
+                if url == QuickLogLink.url { model.quickLogRequested = true }
+            }
             .onChange(of: scenePhase) { _, phase in
                 switch phase {
                 case .background:
@@ -58,18 +61,32 @@ struct RootView: View {
 }
 
 struct MainTabView: View {
-    let model: AppModel
+    enum Selection: Hashable {
+        case dashboard, log, insights, settings
+    }
+
+    @Bindable var model: AppModel
+    @State private var selection = Selection.dashboard
 
     var body: some View {
-        TabView {
-            Tab("Dashboard", systemImage: "square.grid.2x2") {
+        TabView(selection: $selection) {
+            Tab("Dashboard", systemImage: "square.grid.2x2", value: .dashboard) {
                 DashboardView(model: model)
             }
-            Tab("Summary", systemImage: "text.alignleft") {
-                SummaryView(model: model)
+            Tab("Log", systemImage: "plus.circle", value: .log) {
+                QuickLogView(model: model)
             }
-            Tab("Settings", systemImage: "gearshape") {
+            Tab("Insights", systemImage: "text.alignleft", value: .insights) {
+                InsightsView(model: model)
+            }
+            Tab("Settings", systemImage: "gearshape", value: .settings) {
                 SettingsView(model: model)
+            }
+        }
+        .onChange(of: model.quickLogRequested, initial: true) { _, requested in
+            if requested {
+                selection = .log
+                model.quickLogRequested = false
             }
         }
     }

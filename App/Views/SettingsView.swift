@@ -37,10 +37,29 @@ struct SettingsView: View {
                     )
                 }
 
-                Section("Apple Health") {
+                Section {
+                    Toggle(
+                        "Save Mood and Drinks to Health",
+                        isOn: Binding(
+                            get: { model.preferences.writeBackEnabled },
+                            set: { enabled in Task { await model.setWriteBack(enabled) } }
+                        )
+                    )
+                    .disabled(!model.isHealthAvailable)
+                } header: {
+                    Text("Apple Health")
+                } footer: {
+                    Text(
+                        "Mood is saved as State of Mind, and water, caffeine and alcohol as dietary data, so other apps "
+                            + "can use them. Energy, stress, meals and notes stay in Vivra. Deleting an entry in Vivra "
+                            + "also deletes it from Health."
+                    )
+                }
+
+                Section {
                     Text(
                         "To change which data Vivra can read, go to Settings › Privacy & Security › Health › Vivra. "
-                            + "Vivra only reads from Apple Health and never changes it."
+                            + "Apart from mood and drinks, when you turn that on, Vivra only reads from Apple Health."
                     )
                     .foregroundStyle(.secondary)
                 }
@@ -59,7 +78,8 @@ struct SettingsView: View {
                 } footer: {
                     Text(
                         "Deletes everything Vivra has stored on this iPhone, including its encryption key. "
-                            + "Your Apple Health data isn't affected."
+                            + "Your Apple Health data isn't affected; anything Vivra saved there stays until you "
+                            + "delete it in the Health app."
                     )
                 }
             }

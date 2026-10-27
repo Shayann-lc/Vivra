@@ -20,6 +20,19 @@ enum Formatting {
         FindingFormatter.duration(seconds)
     }
 
+    /// Apple Health's own wording for each ECG classification.
+    static func ecgClassification(_ classification: ECGRecord.Classification) -> String {
+        switch classification {
+        case .sinusRhythm: "Sinus Rhythm"
+        case .atrialFibrillation: "Atrial Fibrillation"
+        case .inconclusiveLowHeartRate: "Low Heart Rate"
+        case .inconclusiveHighHeartRate: "High Heart Rate"
+        case .inconclusivePoorReading: "Poor Recording"
+        case .inconclusiveOther: "Inconclusive"
+        case .notSet, .unrecognized: "Not Classified"
+        }
+    }
+
     static func workoutName(_ rawValue: UInt) -> String {
         switch HKWorkoutActivityType(rawValue: rawValue) {
         case .running: "Running"

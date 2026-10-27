@@ -227,3 +227,33 @@ private actor FakeSyncStore: SyncStore {
         #expect(HealthDataType.sleep.quantityKind == nil)
     }
 }
+
+@Suite struct HealthWriteTests {
+    private let now = Date(timeIntervalSince1970: 1_775_000_000)
+
+    @Test func moodMapsOntoValence() {
+        #expect(HealthWrite.for(LogEntry(kind: .mood, timestamp: now, scale: 1)) == .stateOfMind(valence: -1))
+        #expect(HealthWrite.for(LogEntry(kind: .mood, timestamp: now, scale: 3)) == .stateOfMind(valence: 0))
+        #expect(HealthWrite.for(LogEntry(kind: .mood, timestamp: now, scale: 5)) == .stateOfMind(valence: 1))
+        #expect(HealthWrite.for(LogEntry(kind: .mood, timestamp: now, scale: 9)) == nil)
+    }
+
+    @Test func drinksMapToIntakeTypes() {
+        let coffee = LogEntry(kind: .drink, timestamp: now, drink: .coffee, amount: 95)
+        #expect(HealthWrite.for(coffee) == .quantity(.dietaryCaffeine, value: 95))
+        #expect(HealthWrite.for(coffee)?.dataType == .dietaryCaffeine)
+        let beer = LogEntry(kind: .drink, timestamp: now, drink: .alcohol, amount: 1)
+        #expect(HealthWrite.for(beer) == .quantity(.numberOfAlcoholicBeverages, value: 1))
+    }
+
+    @Test func entriesWithoutAHealthEquivalentStayLocal() {
+        #expect(HealthWrite.for(LogEntry(kind: .stress, timestamp: now, scale: 2)) == nil)
+        #expect(HealthWrite.for(LogEntry(kind: .note, timestamp: now, note: "slept badly")) == nil)
+        #expect(HealthWrite.for(LogEntry(kind: .meal, timestamp: now)) == nil)
+    }
+
+    @Test func everyWrittenTypeIsAlsoRead() {
+        let read = Set(PermissionGroup.allCases.flatMap(\.dataTypes))
+        #expect(Set(HealthWrite.writableTypes).isSubset(of: read))
+    }
+}

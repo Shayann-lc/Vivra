@@ -65,6 +65,57 @@ enum Migrations {
             }
         }
 
+        migrator.registerMigration("v3_phase2") { db in
+            try db.create(table: "category_event") { t in
+                t.primaryKey("id", .text)
+                t.column("kind", .text).notNull()
+                t.column("start", .double).notNull()
+                t.column("end", .double).notNull()
+                t.column("value", .integer).notNull()
+                t.column("source_bundle_id", .text).notNull()
+                t.column("source_name", .text).notNull()
+            }
+            try db.create(index: "category_event_kind_start", on: "category_event", columns: ["kind", "start"])
+
+            try db.create(table: "state_of_mind") { t in
+                t.primaryKey("id", .text)
+                t.column("date", .double).notNull()
+                t.column("kind", .text).notNull()
+                t.column("valence", .double).notNull()
+                // Comma-separated HKStateOfMind label and association raw values.
+                t.column("labels", .text).notNull()
+                t.column("associations", .text).notNull()
+                t.column("source_bundle_id", .text).notNull()
+                t.column("source_name", .text).notNull()
+            }
+            try db.create(index: "state_of_mind_date", on: "state_of_mind", columns: ["date"])
+
+            try db.create(table: "ecg_record") { t in
+                t.primaryKey("id", .text)
+                t.column("date", .double).notNull()
+                t.column("classification", .text).notNull()
+                t.column("source_bundle_id", .text).notNull()
+                t.column("source_name", .text).notNull()
+            }
+            try db.create(index: "ecg_record_date", on: "ecg_record", columns: ["date"])
+
+            try db.create(table: "log_entry") { t in
+                t.primaryKey("id", .text)
+                t.column("kind", .text).notNull()
+                t.column("timestamp", .double).notNull()
+                t.column("scale", .integer)
+                t.column("drink", .text)
+                t.column("amount", .double)
+                t.column("note", .text)
+                t.column("healthkit_sample_id", .text)
+            }
+            try db.create(index: "log_entry_timestamp", on: "log_entry", columns: ["timestamp"])
+
+            try db.alter(table: "report") { t in
+                t.add(column: "kind", .text).notNull().defaults(to: "weekly")
+            }
+        }
+
         return migrator
     }
 }

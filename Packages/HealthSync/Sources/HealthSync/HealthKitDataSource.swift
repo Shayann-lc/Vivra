@@ -38,51 +38,112 @@ public final class HealthKitDataSource: HealthDataSource, @unchecked Sendable {
         let hkAnchor = try HealthKitMapping.unarchiveAnchor(anchor)
         let predicate = HKQuery.predicateForSamples(withStart: earliestStart, end: nil, options: .strictStartDate)
 
+        if let kind = type.quantityKind {
+            let page = try await fetch(
+                .quantitySample(type: HealthKitMapping.quantityType(for: kind), predicate: predicate),
+                anchor: hkAnchor,
+                limit: limit
+            )
+            return page.batch {
+                $0.quantitySamples = page.added.map { HealthKitMapping.quantitySample($0, kind: kind) }
+            }
+        }
+        if let kind = type.categoryKind {
+            let page = try await fetch(
+                .categorySample(type: HealthKitMapping.categoryType(for: kind), predicate: predicate),
+                anchor: hkAnchor,
+                limit: limit
+            )
+            return page.batch { $0.categoryEvents = page.added.map { HealthKitMapping.categoryEvent($0, kind: kind) } }
+        }
         switch type {
         case .sleep:
-            let descriptor = HKAnchoredObjectQueryDescriptor(
-                predicates: [.categorySample(type: HKCategoryType(.sleepAnalysis), predicate: predicate)],
+            let page = try await fetch(
+                .categorySample(type: HKCategoryType(.sleepAnalysis), predicate: predicate),
                 anchor: hkAnchor,
                 limit: limit
             )
-            let result = try await descriptor.result(for: store)
-            return try ChangeBatch(
-                sleepIntervals: result.addedSamples.compactMap(HealthKitMapping.sleepInterval),
-                deletedIDs: result.deletedObjects.map(\.uuid),
-                newAnchor: HealthKitMapping.archive(result.newAnchor),
-                hasMore: result.addedSamples.count + result.deletedObjects.count >= limit
-            )
-
+            return page.batch { $0.sleepIntervals = page.added.compactMap(HealthKitMapping.sleepInterval) }
         case .workouts:
-            let descriptor = HKAnchoredObjectQueryDescriptor(
-                predicates: [.workout(predicate)],
+            let page = try await fetch(.workout(predicate), anchor: hkAnchor, limit: limit)
+            return page.batch { $0.workouts = page.added.map(HealthKitMapping.workout) }
+        case .stateOfMind:
+            let page = try await fetch(
+                .sample(type: HealthKitMapping.sampleType(for: .stateOfMind), predicate: predicate),
                 anchor: hkAnchor,
                 limit: limit
             )
-            let result = try await descriptor.result(for: store)
-            return try ChangeBatch(
-                workouts: result.addedSamples.map(HealthKitMapping.workout),
-                deletedIDs: result.deletedObjects.map(\.uuid),
-                newAnchor: HealthKitMapping.archive(result.newAnchor),
-                hasMore: result.addedSamples.count + result.deletedObjects.count >= limit
-            )
-
-        case .heartRate, .restingHeartRate, .heartRateVariabilitySDNN, .walkingHeartRateAverage, .vo2Max:
-            let kind = type.quantityKind!
-            let quantityType = HealthKitMapping.sampleType(for: type) as! HKQuantityType
-            let descriptor = HKAnchoredObjectQueryDescriptor(
-                predicates: [.quantitySample(type: quantityType, predicate: predicate)],
+            return page.batch {
+                $0.statesOfMind = page.added.compactMap { ($0 as? HKStateOfMind).map(HealthKitMapping.stateOfMind) }
+            }
+        case .electrocardiogram:
+            let page = try await fetch(
+                .sample(type: HealthKitMapping.sampleType(for: .electrocardiogram), predicate: predicate),
                 anchor: hkAnchor,
                 limit: limit
             )
-            let result = try await descriptor.result(for: store)
-            return try ChangeBatch(
-                quantitySamples: result.addedSamples.map { HealthKitMapping.quantitySample($0, kind: kind) },
-                deletedIDs: result.deletedObjects.map(\.uuid),
-                newAnchor: HealthKitMapping.archive(result.newAnchor),
-                hasMore: result.addedSamples.count + result.deletedObjects.count >= limit
-            )
+            return page.batch {
+                $0.ecgRecords = page.added.compactMap { ($0 as? HKElectrocardiogram).map(HealthKitMapping.ecgRecord) }
+            }
+        default:
+            preconditionFailure("Unmapped type \(type.rawValue)")
         }
+    }
+
+    private struct Page<Sample: HKSample> {
+        let added: [Sample]
+        let deleted: [UUID]
+        let anchor: Data
+        let hasMore: Bool
+
+        func batch(_ fill: (inout ChangeBatch) -> Void) -> ChangeBatch {
+            var batch = ChangeBatch(deletedIDs: deleted, newAnchor: anchor, hasMore: hasMore)
+            fill(&batch)
+            return batch
+        }
+    }
+
+    private func fetch<Sample: HKSample>(_ predicate: HKSamplePredicate<Sample>, anchor: HKQueryAnchor?, limit: Int)
+        async throws -> Page<Sample>
+    {
+        let descriptor = HKAnchoredObjectQueryDescriptor(predicates: [predicate], anchor: anchor, limit: limit)
+        let result = try await descriptor.result(for: store)
+        return Page(
+            added: result.addedSamples,
+            deleted: result.deletedObjects.map(\.uuid),
+            anchor: try HealthKitMapping.archive(result.newAnchor),
+            hasMore: result.addedSamples.count + result.deletedObjects.count >= limit
+        )
+    }
+
+    // MARK: Write-back
+
+    /// Asks to write mood and drinks (and read them, so they sync back).
+    public func requestWriteAuthorization() async throws {
+        let types = Set(HealthWrite.writableTypes.map(HealthKitMapping.sampleType(for:)))
+        try await store.requestAuthorization(toShare: types, read: Set(types.map { $0 as HKObjectType }))
+    }
+
+    /// Whether Vivra may currently write `type`. (Unlike reading, iOS does
+    /// report write permission.)
+    public func canWrite(_ type: HealthDataType) -> Bool {
+        store.authorizationStatus(for: HealthKitMapping.sampleType(for: type)) == .sharingAuthorized
+    }
+
+    /// Saves the sample for `write` and returns its UUID.
+    public func save(_ write: HealthWrite, at date: Date) async throws -> UUID {
+        let sample = HealthKitMapping.sample(for: write, at: date)
+        try await store.save(sample)
+        return sample.uuid
+    }
+
+    /// Deletes a sample Vivra wrote. HealthKit only lets an app delete its
+    /// own samples, so this can't touch anything else.
+    public func deleteSample(id: UUID, of type: HealthDataType) async throws {
+        _ = try await store.deleteObjects(
+            of: HealthKitMapping.sampleType(for: type),
+            predicate: HKQuery.predicateForObject(with: id)
+        )
     }
 
     // MARK: Observation
@@ -142,9 +203,9 @@ public final class HealthKitDataSource: HealthDataSource, @unchecked Sendable {
 
     static func frequency(for type: HealthDataType) -> HKUpdateFrequency {
         switch type {
-        case .sleep, .workouts: .immediate
-        case .heartRate, .restingHeartRate, .heartRateVariabilitySDNN, .walkingHeartRateAverage: .hourly
-        case .vo2Max: .daily
+        case .sleep, .workouts, .stateOfMind, .electrocardiogram, .irregularRhythm, .mindfulSession: .immediate
+        case .vo2Max, .bodyMass, .bodyFatPercentage, .appleSleepingWristTemperature: .daily
+        default: .hourly
         }
     }
 }

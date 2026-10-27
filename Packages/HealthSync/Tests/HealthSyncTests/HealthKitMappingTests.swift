@@ -61,4 +61,50 @@ import VivraModel
         }
         #expect(HealthKitMapping.sampleType(for: .workouts) == HKWorkoutType.workoutType())
     }
+
+    @Test func percentagesAreStoredAsZeroToHundred() {
+        let oxygen = HKQuantitySample(
+            type: HKQuantityType(.oxygenSaturation),
+            quantity: HKQuantity(unit: .percent(), doubleValue: 0.96),
+            start: start,
+            end: start
+        )
+        #expect(abs(HealthKitMapping.quantitySample(oxygen, kind: .oxygenSaturation).value - 96) < 1e-9)
+        #expect(
+            abs(HealthKitMapping.quantity(21.5, kind: .bodyFatPercentage).doubleValue(for: .percent()) - 0.215) < 1e-9)
+    }
+
+    @Test func everyQuantityKindHasAMatchingUnit() {
+        for kind in QuantityKind.allCases {
+            let type = HealthKitMapping.quantityType(for: kind)
+            #expect(type.is(compatibleWith: HealthKitMapping.unit(for: kind)), "\(kind)")
+        }
+    }
+
+    @Test func categoryEventsMap() {
+        let stood = HKCategorySample(
+            type: HKCategoryType(.appleStandHour),
+            value: HKCategoryValueAppleStandHour.stood.rawValue,
+            start: start,
+            end: start.addingTimeInterval(3600)
+        )
+        let event = HealthKitMapping.categoryEvent(stood, kind: .standHour)
+        #expect(event.kind == .standHour)
+        #expect(event.value == 0)
+        #expect(event.id == stood.uuid)
+    }
+
+    @Test func writeBackSamplesCarryTheRightTypeAndValue() throws {
+        let caffeine = try #require(
+            HealthKitMapping.sample(for: .quantity(.dietaryCaffeine, value: 95), at: start) as? HKQuantitySample
+        )
+        #expect(caffeine.quantityType == HKQuantityType(.dietaryCaffeine))
+        #expect(caffeine.quantity.doubleValue(for: .gramUnit(with: .milli)) == 95)
+        #expect(caffeine.startDate == start)
+
+        let mood = try #require(HealthKitMapping.sample(for: .stateOfMind(valence: 0.5), at: start) as? HKStateOfMind)
+        #expect(mood.valence == 0.5)
+        #expect(mood.kind == .momentaryEmotion)
+        #expect(HealthKitMapping.stateOfMind(mood).valence == 0.5)
+    }
 }

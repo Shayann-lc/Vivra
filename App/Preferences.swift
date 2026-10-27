@@ -31,6 +31,8 @@ final class Preferences {
         case acceptedDisclaimerVersion
         case appLockEnabled
         case appLockTimeout
+        case writeBackEnabled
+        case requestedPermissionRevisions
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -50,6 +52,14 @@ final class Preferences {
     var appLockTimeout: AppLockTimeout {
         didSet { defaults.set(appLockTimeout.rawValue, forKey: Key.appLockTimeout.rawValue) }
     }
+    /// Save mood and drinks to Apple Health. Off by default.
+    var writeBackEnabled: Bool {
+        didSet { defaults.set(writeBackEnabled, forKey: Key.writeBackEnabled.rawValue) }
+    }
+    /// The revision of each permission group last requested (group id → revision).
+    var requestedPermissionRevisions: [String: Int] {
+        didSet { defaults.set(requestedPermissionRevisions, forKey: Key.requestedPermissionRevisions.rawValue) }
+    }
 
     init(defaults: UserDefaults, domainName: String?) {
         self.defaults = defaults
@@ -58,6 +68,9 @@ final class Preferences {
         acceptedDisclaimerVersion = defaults.integer(forKey: Key.acceptedDisclaimerVersion.rawValue)
         appLockEnabled = defaults.bool(forKey: Key.appLockEnabled.rawValue)
         appLockTimeout = AppLockTimeout(rawValue: defaults.integer(forKey: Key.appLockTimeout.rawValue)) ?? .immediately
+        writeBackEnabled = defaults.bool(forKey: Key.writeBackEnabled.rawValue)
+        requestedPermissionRevisions =
+            defaults.dictionary(forKey: Key.requestedPermissionRevisions.rawValue) as? [String: Int] ?? [:]
     }
 
     var hasAcceptedCurrentDisclaimer: Bool {
@@ -72,6 +85,8 @@ final class Preferences {
         acceptedDisclaimerVersion = 0
         appLockEnabled = false
         appLockTimeout = .immediately
+        writeBackEnabled = false
+        requestedPermissionRevisions = [:]
         // The didSet observers above wrote defaults back; remove them again.
         for key in Key.allCases { defaults.removeObject(forKey: key.rawValue) }
     }

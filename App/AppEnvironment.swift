@@ -15,6 +15,9 @@ struct AppEnvironment {
     /// Read each time it's needed, so time zone changes are picked up.
     var calendar: @Sendable () -> DayCalendar
     var makeNarrator: @Sendable () -> (any Narrator)?
+    /// Samples with this source were written by Vivra (write-back) and are
+    /// ignored when read back.
+    var ownBundleIdentifier: String?
 
     static var live: AppEnvironment {
         AppEnvironment(
@@ -23,7 +26,8 @@ struct AppEnvironment {
             health: HealthKitDataSource.isHealthDataAvailable ? HealthKitDataSource() : nil,
             clock: SystemClock(),
             calendar: { DayCalendar(Calendar.autoupdatingCurrent) },
-            makeNarrator: { FoundationModelsNarrator.isAvailable ? FoundationModelsNarrator() : nil }
+            makeNarrator: { FoundationModelsNarrator.isAvailable ? FoundationModelsNarrator() : nil },
+            ownBundleIdentifier: Bundle.main.bundleIdentifier
         )
     }
 }
@@ -44,7 +48,8 @@ extension AppEnvironment {
             health: nil,
             clock: FixedClock(now),
             calendar: { calendar },
-            makeNarrator: { nil }
+            makeNarrator: { nil },
+            ownBundleIdentifier: "app.vivra.isolated"
         )
     }
 }

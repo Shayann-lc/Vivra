@@ -24,6 +24,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         if model.preferences.onboardingCompleted {
             model.startObservingHealth()
         }
+        let model = model
+        QuickLogRouter.shared.handler = { model.quickLogRequested = true }
         Task { await model.start() }
         return true
     }
