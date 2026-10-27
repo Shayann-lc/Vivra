@@ -84,6 +84,9 @@ targets:
           If you turn it on in Settings, Vivra saves the mood and drinks you log to Apple Health so other apps can
           use them.
         INFOPLIST_KEY_NSFaceIDUsageDescription: Vivra uses Face ID to unlock the app when App Lock is on.
+        # Export compliance (owner's decision, docs/APP_STORE.md §5): SQLCipher only
+        # protects the person's own data on the device, which is exempt.
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait

@@ -44,8 +44,9 @@ Relevant App Review Guidelines: 2.5.1, 5.1.1, 5.1.2 and 5.1.3.
 - **Not used for advertising or data mining.** Health data isn't stored in iCloud,
   and nothing leaves the device.
 - **A privacy policy URL is required** for every app, and especially for HealthKit
-  apps. **Owner to provide.** A short page is enough, saying that Vivra collects
-  nothing, stores data only on the device, encrypted, and offers export and delete.
+  apps. The text is drafted in `docs/PRIVACY_POLICY.md`. **Owner to do:** fill in
+  the date and contact email, host it at a public address, and enter that URL in App
+  Store Connect.
 - **Medical claims (1.4.1):** Vivra makes none. It describes patterns in the person's
   own data, uses non-causal language (`docs/STYLE_GUIDE.md`, enforced by
   `StyleGuide.swift`), and shows a "not medical advice" disclaimer during onboarding,
@@ -92,7 +93,7 @@ Relevant App Review Guidelines: 2.5.1, 5.1.1, 5.1.2 and 5.1.3.
   - Note that the reference norms use adult data, and the birth year picker only
     offers ages 18 and over.
 
-## 5. Export compliance (owner's decision)
+## 5. Export compliance (decided: exempt)
 
 Vivra encrypts its database with SQLCipher (AES-256), a non-Apple library, in
 addition to iOS Data Protection. It uses encryption only to protect the person's own
@@ -105,18 +106,19 @@ treated as exempt under the US Export Administration Regulations (Category 5 Par
 Note 4 and the mass-market provisions). This is a legal determination, so **the owner
 needs to decide, with advice if needed.**
 
-Once decided, add `ITSAppUsesNonExemptEncryption` (`NO` if exempt) to the app's
-Info.plist keys in `project.yml`, so each upload stops asking. I couldn't confirm from
-this environment which crypto provider SQLCipher.swift 4.19.0 links on Apple
-platforms (CommonCrypto or its own), so check Zetetic's notes for that version if
-your adviser asks.
+**Decision (owner):** exempt. If App Store Connect asks, answer "uses encryption: Yes"
+and "qualifies for an exemption: Yes". `ITSAppUsesNonExemptEncryption = NO` is set in
+`project.yml`, so uploads don't ask each time. I couldn't confirm from this
+environment which crypto provider SQLCipher.swift 4.19.0 links on Apple platforms
+(CommonCrypto or its own); check Zetetic's notes for that version if anyone asks.
 
 ## 6. Before the first submission
 
 - [ ] Real bundle ID, team and widget App ID in `Config/Local.xcconfig`.
 - [ ] HealthKit capability on the App ID, with background delivery.
 - [ ] App icon (the asset catalog name is empty for now: `ASSETCATALOG_COMPILER_APPICON_NAME`).
-- [ ] Privacy policy URL.
-- [ ] Export-compliance answer and plist key.
+- [ ] Privacy policy (`docs/PRIVACY_POLICY.md`): date and contact filled in, hosted,
+  URL entered in App Store Connect.
+- [x] Export-compliance answer and plist key.
 - [ ] The device steps in `docs/DEVICE_TEST.md` (Phases 1–5) pass.
 - [ ] The profiling checklist in `docs/PERFORMANCE.md` has been run.
