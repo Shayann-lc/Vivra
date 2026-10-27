@@ -83,15 +83,22 @@ Relevant App Review Guidelines: 2.5.1, 5.1.1, 5.1.2 and 5.1.3.
   "Vivra is not a medical device and doesn't provide medical advice. It describes
   patterns in your own data, not their causes. Talk to a healthcare professional
   about your health. Vivra works with Apple Health."
-- **Age rating questionnaire:**
+- **Age rating: 13+ (owner, decided).** Answer the questionnaire in App Store Connect
+  as below, with no override to a higher rating, and confirm the page shows 13+
+  before submitting (Apple's current scale is 4+, 9+, 13+, 16+ and 18+):
+  - Alcohol, tobacco or drug use or references: **Infrequent.** People can log
+    alcoholic drinks and Vivra reads alcohol intake from Health, as one option among
+    many; it never promotes drinking. Under Apple's current table that points to
+    **13+**; "Frequent" would mean 18+.
   - Medical or treatment information: **None.** Vivra gives no diagnosis or treatment
-    information.
-  - Alcohol, tobacco or drug use or references: people can log alcoholic drinks, and
-    Vivra reads alcohol intake from Health. **Owner to decide** whether this counts as
-    "Infrequent/Mild" references. It affects the rating.
+    information, and lists ECG records without interpreting them.
+  - Health or wellness topics: **Yes.** Vivra tracks sleep, activity, mood and drinks.
   - Everything else: None.
-  - Note that the reference norms use adult data, and the birth year picker only
-    offers ages 18 and over.
+  - The reference norms use adult data, and the birth year picker only offers ages
+    18 and over; that stays as is with a 13+ rating.
+- **Regulated medical device declaration:** Health & Fitness apps distributed in the
+  EU/EEA, UK or US are asked whether they are a regulated medical device. Answer
+  **No**: Vivra is a lifestyle journal and makes no medical claims (§2).
 
 ## 5. Export compliance (decided: exempt)
 
