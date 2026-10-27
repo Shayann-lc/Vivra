@@ -91,6 +91,8 @@ targets:
       path: Widgets/Info.plist
       properties:
         CFBundleDisplayName: Vivra
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:

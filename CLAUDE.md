@@ -6,8 +6,8 @@ and the definition of done for each phase.
 ## Current phase
 
 **Phase 2** (all data types, quick logging, full insight engine, daily
-check-in) is approved and in progress. Its design and definition of done are
-in PLAN §7, and the device steps are in `docs/DEVICE_TEST.md`. **Phase 3
+check-in) is done in code, with CI green. Its device steps in
+`docs/DEVICE_TEST.md` are pending with the owner. **Phase 3 (gamification)
 needs the owner's explicit approval before it starts.**
 
 ## Hard rules
