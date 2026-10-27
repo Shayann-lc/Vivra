@@ -162,9 +162,10 @@ public final class HealthRepository: SyncStore, Sendable {
             GROUP BY days.day, q.kind, q.source_bundle_id
             """
         let dayLookup = Dictionary(uniqueKeysWithValues: days.map { ($0.description, $0) })
+        let statementArguments = StatementArguments(arguments)
         return try await writer.read { db in
             var totals: DailySourceTotals = [:]
-            for row in try Row.fetchAll(db, sql: sql, arguments: StatementArguments(arguments)) {
+            for row in try Row.fetchAll(db, sql: sql, arguments: statementArguments) {
                 guard let day = dayLookup[row["day"]], let kind = QuantityKind(rawValue: row["kind"]) else { continue }
                 totals[kind, default: [:]][day, default: [:]][row["source"]] = row["total"]
             }

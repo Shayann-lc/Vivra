@@ -139,8 +139,8 @@ import Testing
 
         let logs = harness.model.todayLogs
         #expect(logs.count == 3)
-        #expect(logs.contains { $0.kind == .mood && $0.scale == 4 })
-        #expect(logs.contains { $0.kind == .drink && $0.amount == 190 })
+        #expect(logs.contains { $0.kind.rawValue == "mood" && $0.scale == 4 })
+        #expect(logs.contains { $0.kind.rawValue == "drink" && $0.amount == 190 })
         #expect(logs.contains { $0.note == "lunch outside" })
         #expect(harness.model.dashboard?.todayLogged[.mood] == 4)
 
@@ -157,7 +157,7 @@ import Testing
         await harness.model.createReport(.daily)
 
         let report = harness.model.latestReport(.daily)
-        #expect(report?.kind == .daily)
+        #expect(report?.kind.rawValue == "daily")
         #expect(report?.summary.draft.headline == "Not enough data for a check-in yet")
         #expect(harness.model.latestReport(.weekly) == nil)
     }
