@@ -89,6 +89,98 @@ enum Statistics {
     }
 }
 
+extension Statistics {
+    /// Average ranks (1-based), ties sharing the mean of their positions.
+    static func ranks(_ values: [Double]) -> [Double] {
+        let order = values.indices.sorted { values[$0] < values[$1] }
+        var ranks = [Double](repeating: 0, count: values.count)
+        var start = 0
+        while start < order.count {
+            var end = start
+            while end + 1 < order.count && values[order[end + 1]] == values[order[start]] { end += 1 }
+            let rank = Double(start + end) / 2 + 1
+            for position in start...end { ranks[order[position]] = rank }
+            start = end + 1
+        }
+        return ranks
+    }
+
+    static func pearson(_ x: [Double], _ y: [Double]) -> Double? {
+        guard x.count == y.count, x.count > 1, let meanX = mean(x), let meanY = mean(y) else { return nil }
+        var covariance = 0.0
+        var varianceX = 0.0
+        var varianceY = 0.0
+        for (a, b) in zip(x, y) {
+            covariance += (a - meanX) * (b - meanY)
+            varianceX += (a - meanX) * (a - meanX)
+            varianceY += (b - meanY) * (b - meanY)
+        }
+        guard varianceX > 0, varianceY > 0 else { return nil }
+        return covariance / (varianceX * varianceY).squareRoot()
+    }
+
+    /// Spearman's ρ: Pearson's r on average ranks. Nil when either side is
+    /// constant.
+    static func spearman(_ x: [Double], _ y: [Double]) -> Double? {
+        pearson(ranks(x), ranks(y))
+    }
+
+    /// Two-sided p-value and 95% interval for Spearman's ρ via Fisher's z,
+    /// with the standard error 1.06 / √(n − 3) (Fieller, Hartley & Pearson,
+    /// 1957). Needs n ≥ 4.
+    static func spearmanInference(rho: Double, n: Int) -> (pValue: Double, interval: ClosedRange<Double>) {
+        let clamped = min(max(rho, -0.999_999), 0.999_999)
+        let z = atanh(clamped)
+        let standardError = 1.06 / Double(n - 3).squareRoot()
+        let pValue = erfc(abs(z) / standardError / 2.0.squareRoot())
+        let margin = 1.959_963_985 * standardError
+        return (min(1, pValue), tanh(z - margin)...tanh(z + margin))
+    }
+
+    /// Mann–Kendall trend test with the tie-corrected variance and a
+    /// continuity correction. `values` must be in time order.
+    static func mannKendallPValue(_ values: [Double]) -> Double {
+        let n = values.count
+        guard n >= 3 else { return 1 }
+        var s = 0.0
+        for i in 0..<(n - 1) {
+            for j in (i + 1)..<n {
+                if values[j] > values[i] { s += 1 } else if values[j] < values[i] { s -= 1 }
+            }
+        }
+        var tieTerm = 0.0
+        for count in Dictionary(grouping: values, by: { $0 }).values.map(\.count) where count > 1 {
+            let t = Double(count)
+            tieTerm += t * (t - 1) * (2 * t + 5)
+        }
+        let size = Double(n)
+        let variance = (size * (size - 1) * (2 * size + 5) - tieTerm) / 18
+        guard variance > 0, s != 0 else { return 1 }
+        let z = (abs(s) - 1) / variance.squareRoot()
+        return min(1, erfc(z / 2.0.squareRoot()))
+    }
+
+    /// Theil–Sen line: the median of pairwise slopes, and the median of
+    /// y − slope · x as the intercept.
+    static func theilSen(_ points: [(x: Double, y: Double)]) -> (slope: Double, intercept: Double)? {
+        guard points.count >= 2 else { return nil }
+        var slopes: [Double] = []
+        for i in 0..<(points.count - 1) {
+            for j in (i + 1)..<points.count where points[j].x != points[i].x {
+                slopes.append((points[j].y - points[i].y) / (points[j].x - points[i].x))
+            }
+        }
+        guard let slope = median(slopes) else { return nil }
+        return (slope, median(points.map { $0.y - slope * $0.x })!)
+    }
+
+    /// Median absolute deviation from the median.
+    static func medianAbsoluteDeviation(_ values: [Double]) -> Double? {
+        guard let center = median(values) else { return nil }
+        return median(values.map { abs($0 - center) })
+    }
+}
+
 /// A small, fast, seedable generator (Steele et al., 2014). Not for
 /// cryptography; used only to make resampling reproducible.
 struct SplitMix64: RandomNumberGenerator {

@@ -5,7 +5,8 @@ import VivraLogging
 /// Something that drafts a narrative from findings, such as the on-device
 /// Foundation Models narrator.
 public protocol Narrator: Sendable {
-    func draft(findings: [Finding], corrections: [NarrativeViolation]) async throws -> NarrativeDraft
+    func draft(kind: ReportKind, findings: [Finding], corrections: [NarrativeViolation]) async throws
+        -> NarrativeDraft
 }
 
 public enum NarrativeGenerator: String, Codable, Sendable {
@@ -29,16 +30,19 @@ public enum SummaryComposer {
     /// Asks the narrator for a draft and validates it. Violations get one
     /// retry with the violations listed; a second failure, a thrown error, or
     /// no narrator falls back to the template renderer.
-    public static func compose(_ report: WeeklyReport, narrator: (any Narrator)?) async -> ComposedSummary {
+    public static func compose(_ report: InsightReport, narrator: (any Narrator)?) async -> ComposedSummary {
         let findings = Array(report.findings.prefix(maximumFindings))
         let fallback = ComposedSummary(
-            draft: TemplateRenderer.render(findings), generator: .template, findings: findings)
+            draft: TemplateRenderer.render(findings, kind: report.kind),
+            generator: .template,
+            findings: findings
+        )
         guard let narrator, !findings.isEmpty else { return fallback }
 
         var corrections: [NarrativeViolation] = []
         for attempt in 1...2 {
             do {
-                let draft = try await narrator.draft(findings: findings, corrections: corrections)
+                let draft = try await narrator.draft(kind: report.kind, findings: findings, corrections: corrections)
                 let violations = NarrativeValidator.validate(draft, findings: findings)
                 if violations.isEmpty {
                     return ComposedSummary(draft: draft, generator: .onDeviceModel, findings: findings)
@@ -57,9 +61,14 @@ public enum SummaryComposer {
 
 /// Builds the user prompt for a narrator.
 public enum PromptBuilder {
-    public static func prompt(findings: [Finding], corrections: [NarrativeViolation]) -> String {
+    public static func prompt(kind: ReportKind, findings: [Finding], corrections: [NarrativeViolation]) -> String {
+        let task =
+            switch kind {
+            case .weekly: "Write a summary of the person's last 7 days from these findings."
+            case .daily: "Write a short check-in for the person's day from these findings."
+            }
         var lines = [
-            "Write a summary of the person's last 7 days from these findings.",
+            task,
             "Write one sentence per finding, and set findingID to the id shown in brackets.",
             "Write a short headline without numbers.",
             "",

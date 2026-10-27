@@ -1,40 +1,6 @@
 import Foundation
 import VivraModel
 
-/// A metric the engine reports on, with its unit.
-public enum Metric: String, Codable, Sendable, CaseIterable {
-    /// Time asleep per night.
-    case sleepDuration
-    case restingHeartRate
-    case heartRateVariability
-    case walkingHeartRateAverage
-    case vo2Max
-    /// Total workout minutes over the period.
-    case workoutMinutes
-    /// Number of workouts over the period.
-    case workoutCount
-
-    public var unit: MetricUnit {
-        switch self {
-        case .sleepDuration: .seconds
-        case .restingHeartRate, .walkingHeartRateAverage: .beatsPerMinute
-        case .heartRateVariability: .milliseconds
-        case .vo2Max: .millilitersPerKilogramMinute
-        case .workoutMinutes: .minutes
-        case .workoutCount: .count
-        }
-    }
-}
-
-public enum MetricUnit: String, Codable, Sendable {
-    case seconds
-    case beatsPerMinute
-    case milliseconds
-    case millilitersPerKilogramMinute
-    case minutes
-    case count
-}
-
 public enum Confidence: String, Codable, Sendable, Comparable {
     case low
     case medium
@@ -71,7 +37,7 @@ public struct WeeklyAverage: Codable, Sendable, Equatable {
     }
 }
 
-/// The day-level condition a pattern compares.
+/// The day-level condition a group difference compares.
 public enum Condition: String, Codable, Sendable {
     /// The night before was shorter than the person's median night.
     case shorterSleep
@@ -130,9 +96,176 @@ public struct GroupDifference: Codable, Sendable, Equatable {
     public var difference: Double { withConditionMedian - withoutConditionMedian }
 }
 
+/// A rank correlation between X on day t and Y on day t + lag, shown
+/// concretely as Y's median in X's low and high groups.
+public struct Correlation: Codable, Sendable, Equatable {
+    public enum Split: String, Codable, Sendable {
+        /// Bottom third of X against top third.
+        case thirds
+        /// Days with none of X against days with some (X is often zero).
+        case noneVersusSome
+    }
+
+    public let x: Metric
+    public let y: Metric
+    /// 0: same day. 1: Y is the next day (for sleep, the following night).
+    public let lag: Int
+    public let rho: Double
+    public let rhoLow: Double
+    public let rhoHigh: Double
+    /// Paired days.
+    public let days: Int
+    public let pValue: Double
+    public let adjustedPValue: Double
+    public let confidence: Confidence
+    public let split: Split
+    /// Largest X in the low group (0 for `noneVersusSome`).
+    public let lowGroupMaxX: Double
+    /// Smallest X in the high group.
+    public let highGroupMinX: Double
+    public let lowGroupMedianY: Double
+    public let highGroupMedianY: Double
+    public let lowGroupDays: Int
+    public let highGroupDays: Int
+
+    public init(
+        x: Metric,
+        y: Metric,
+        lag: Int,
+        rho: Double,
+        rhoLow: Double,
+        rhoHigh: Double,
+        days: Int,
+        pValue: Double,
+        adjustedPValue: Double,
+        confidence: Confidence,
+        split: Split,
+        lowGroupMaxX: Double,
+        highGroupMinX: Double,
+        lowGroupMedianY: Double,
+        highGroupMedianY: Double,
+        lowGroupDays: Int,
+        highGroupDays: Int
+    ) {
+        self.x = x
+        self.y = y
+        self.lag = lag
+        self.rho = rho
+        self.rhoLow = rhoLow
+        self.rhoHigh = rhoHigh
+        self.days = days
+        self.pValue = pValue
+        self.adjustedPValue = adjustedPValue
+        self.confidence = confidence
+        self.split = split
+        self.lowGroupMaxX = lowGroupMaxX
+        self.highGroupMinX = highGroupMinX
+        self.lowGroupMedianY = lowGroupMedianY
+        self.highGroupMedianY = highGroupMedianY
+        self.lowGroupDays = lowGroupDays
+        self.highGroupDays = highGroupDays
+    }
+}
+
+/// A steady change over the last `windowDays`, from the Theil–Sen line.
+public struct Trend: Codable, Sendable, Equatable {
+    public let metric: Metric
+    public let windowDays: Int
+    /// The line's value at the start and end of the window.
+    public let startValue: Double
+    public let endValue: Double
+    /// Days with data in the window.
+    public let days: Int
+    public let pValue: Double
+    public let adjustedPValue: Double
+    public let confidence: Confidence
+
+    public init(
+        metric: Metric,
+        windowDays: Int,
+        startValue: Double,
+        endValue: Double,
+        days: Int,
+        pValue: Double,
+        adjustedPValue: Double,
+        confidence: Confidence
+    ) {
+        self.metric = metric
+        self.windowDays = windowDays
+        self.startValue = startValue
+        self.endValue = endValue
+        self.days = days
+        self.pValue = pValue
+        self.adjustedPValue = adjustedPValue
+        self.confidence = confidence
+    }
+}
+
+/// A recent value well outside the person's own usual range.
+public struct Anomaly: Codable, Sendable, Equatable {
+    public let metric: Metric
+    /// 0 today, 1 yesterday.
+    public let daysAgo: Int
+    public let value: Double
+    /// 10th and 90th percentiles of the baseline.
+    public let usualLow: Double
+    public let usualHigh: Double
+    public let baselineDays: Int
+
+    public init(metric: Metric, daysAgo: Int, value: Double, usualLow: Double, usualHigh: Double, baselineDays: Int) {
+        self.metric = metric
+        self.daysAgo = daysAgo
+        self.value = value
+        self.usualLow = usualLow
+        self.usualHigh = usualHigh
+        self.baselineDays = baselineDays
+    }
+
+    public var isAbove: Bool { value > usualHigh }
+}
+
+/// A recent value next to the person's median, for the daily check-in.
+public struct DayComparison: Codable, Sendable, Equatable {
+    public let metric: Metric
+    /// 0 today, 1 yesterday.
+    public let daysAgo: Int
+    public let value: Double
+    public let baselineMedian: Double
+    public let baselineDays: Int
+
+    public init(metric: Metric, daysAgo: Int, value: Double, baselineMedian: Double, baselineDays: Int) {
+        self.metric = metric
+        self.daysAgo = daysAgo
+        self.value = value
+        self.baselineMedian = baselineMedian
+        self.baselineDays = baselineDays
+    }
+}
+
 public enum FindingDetail: Codable, Sendable, Equatable {
     case weeklyAverage(WeeklyAverage)
     case groupDifference(GroupDifference)
+    case correlation(Correlation)
+    case trend(Trend)
+    case anomaly(Anomaly)
+    case dayComparison(DayComparison)
+
+    /// Patterns and trends carry a confidence; descriptive findings don't.
+    public var confidence: Confidence? {
+        switch self {
+        case .groupDifference(let difference): difference.confidence
+        case .correlation(let correlation): correlation.confidence
+        case .trend(let trend): trend.confidence
+        case .weeklyAverage, .anomaly, .dayComparison: nil
+        }
+    }
+
+    public var isPattern: Bool {
+        switch self {
+        case .groupDifference, .correlation: true
+        default: false
+        }
+    }
 }
 
 /// A computed result. Structured numbers only, never prose: wording is the
@@ -152,13 +285,21 @@ public struct Finding: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
-public struct WeeklyReport: Codable, Sendable, Equatable {
-    /// First and last day of the 7-day window (the last is yesterday).
+public enum ReportKind: String, Codable, Sendable {
+    case daily
+    case weekly
+}
+
+public struct InsightReport: Codable, Sendable, Equatable {
+    public let kind: ReportKind
+    /// The days covered (the same day for a daily check-in).
     public let periodStart: Day
     public let periodEnd: Day
+    /// In priority order.
     public let findings: [Finding]
 
-    public init(periodStart: Day, periodEnd: Day, findings: [Finding]) {
+    public init(kind: ReportKind, periodStart: Day, periodEnd: Day, findings: [Finding]) {
+        self.kind = kind
         self.periodStart = periodStart
         self.periodEnd = periodEnd
         self.findings = findings

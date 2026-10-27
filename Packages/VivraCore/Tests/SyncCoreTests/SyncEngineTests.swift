@@ -213,4 +213,17 @@ private actor FakeSyncStore: SyncStore {
         #expect(grouped.count == HealthDataType.allCases.count)
         #expect(Set(grouped) == Set(HealthDataType.allCases))
     }
+
+    @Test func phaseOneUsersAreAskedForNewAndExpandedGroups() {
+        let pending = PermissionGroup.pending(requested: PermissionGroup.phaseOneRevisions)
+        #expect(pending == [.heart, .activity, .mind, .nutrition, .body])
+        let everything = Dictionary(uniqueKeysWithValues: PermissionGroup.allCases.map { ($0, $0.revision) })
+        #expect(PermissionGroup.pending(requested: everything).isEmpty)
+    }
+
+    @Test func typeNamesLineUpWithKinds() {
+        for kind in QuantityKind.allCases { #expect(HealthDataType(kind).quantityKind == kind) }
+        for kind in CategoryKind.allCases { #expect(HealthDataType(kind).categoryKind == kind) }
+        #expect(HealthDataType.sleep.quantityKind == nil)
+    }
 }

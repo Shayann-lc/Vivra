@@ -16,12 +16,14 @@ public struct FoundationModelsNarrator: Narrator {
         return false
     }
 
-    public func draft(findings: [Finding], corrections: [NarrativeViolation]) async throws -> NarrativeDraft {
+    public func draft(kind: ReportKind, findings: [Finding], corrections: [NarrativeViolation]) async throws
+        -> NarrativeDraft
+    {
         // A fresh session per attempt, so a rejected draft doesn't linger in
         // the context; corrections are passed explicitly in the prompt.
         let session = LanguageModelSession(instructions: StyleGuide.modelInstructions)
         let response = try await session.respond(
-            to: PromptBuilder.prompt(findings: findings, corrections: corrections),
+            to: PromptBuilder.prompt(kind: kind, findings: findings, corrections: corrections),
             generating: GeneratedSummary.self,
             options: GenerationOptions(temperature: 0.2)
         )

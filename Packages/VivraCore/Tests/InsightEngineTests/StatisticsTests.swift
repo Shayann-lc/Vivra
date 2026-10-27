@@ -67,4 +67,43 @@ import Testing
         #expect(generator.next() == 0xE220_A839_7B1D_CDAF)
         #expect(generator.next() == 0x6E78_9E6A_A1B9_65F4)
     }
+
+    /// Known answers from scipy.stats.spearmanr.
+    @Test func spearmanMatchesScipy() {
+        let rho = Statistics.spearman([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], [2, 1, 4, 3, 7, 8, 6, 9, 10, 12])!
+        #expect(abs(rho - 0.939_393_939) < 1e-9)
+        let tied = Statistics.spearman([1, 2, 2, 3, 4, 5, 5, 6], [3, 3, 1, 4, 6, 5, 7, 7])!
+        #expect(abs(tied - 0.890_243_902) < 1e-9)
+        #expect(Statistics.spearman([1, 1, 1], [1, 2, 3]) == nil)
+    }
+
+    /// Reference computed independently in Python from the same formula.
+    @Test func spearmanInferenceMatchesReference() {
+        let inference = Statistics.spearmanInference(rho: 0.939_393_939_393_939_3, n: 10)
+        #expect(abs(inference.pValue - 1.523_768e-5) < 1e-10)
+        #expect(abs(inference.interval.lowerBound - 0.738_705_218) < 1e-8)
+        #expect(abs(inference.interval.upperBound - 0.987_087_443) < 1e-8)
+    }
+
+    /// Known answers from pymannkendall.original_test.
+    @Test func mannKendallMatchesReference() {
+        let p = Statistics.mannKendallPValue([5.1, 5.3, 5.2, 5.6, 5.8, 5.7, 6.1, 6.0, 6.4, 6.3, 6.6, 6.9])
+        #expect(abs(p - 9.281_898e-5) < 1e-10)
+        let tied = Statistics.mannKendallPValue([3, 3, 4, 4, 4, 5, 5, 6, 5, 7, 7, 7])
+        #expect(abs(tied - 1.829_722e-4) < 1e-9)
+        #expect(Statistics.mannKendallPValue([4, 4, 4, 4]) == 1)
+    }
+
+    /// Known answer from scipy.stats.theilslopes(method="joint").
+    @Test func theilSenMatchesScipy() {
+        let points = [2.0, 4, 3, 6, 7, 9, 8].enumerated().map { (x: Double($0), y: $1) }
+        let line = Statistics.theilSen(points)!
+        #expect(line.slope == 1.25)
+        #expect(line.intercept == 2)
+    }
+
+    @Test func medianAbsoluteDeviation() {
+        #expect(Statistics.medianAbsoluteDeviation([1, 1, 2, 2, 4, 6, 9]) == 1)
+        #expect(Statistics.ranks([10, 20, 20, 30]) == [1, 2.5, 2.5, 4])
+    }
 }

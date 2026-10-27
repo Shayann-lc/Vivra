@@ -50,8 +50,8 @@ public enum NarrativeViolation: Sendable, Equatable, CustomStringConvertible {
 }
 
 public enum NarrativeValidator {
-    /// The report window is 7 days, so "7" may always appear.
-    static let alwaysAllowedNumbers: Set<String> = ["7"]
+    /// Report windows (7, 28 and 90 days) may always be mentioned.
+    static let alwaysAllowedNumbers: Set<String> = ["7", "28", "90"]
 
     public static func validate(_ draft: NarrativeDraft, findings: [Finding]) -> [NarrativeViolation] {
         var violations: [NarrativeViolation] = []
@@ -60,7 +60,8 @@ public enum NarrativeValidator {
         }
 
         let allowedByFinding = Dictionary(
-            uniqueKeysWithValues: findings.map { ($0.id, allowedNumbers(for: $0)) }
+            findings.map { ($0.id, allowedNumbers(for: $0)) },
+            uniquingKeysWith: { $0.union($1) }
         )
         let allAllowed = allowedByFinding.values.reduce(alwaysAllowedNumbers) { $0.union($1) }
 
@@ -92,15 +93,22 @@ public enum NarrativeValidator {
     static func allowedNumbers(for finding: Finding) -> Set<String> {
         var allowed = alwaysAllowedNumbers
         allowed.formUnion(NumberTokens.extract(from: TemplateRenderer.sentence(for: finding)))
+        func allow(_ value: Double, _ metric: Metric) {
+            allowed.formUnion(NumberTokens.extract(from: FindingFormatter.format(abs(value), metric.unit)))
+        }
         switch finding.detail {
         case .weeklyAverage(let average):
-            if let previous = average.previousWeek {
-                let change = FindingFormatter.format(abs(average.thisWeek - previous), average.metric.unit)
-                allowed.formUnion(NumberTokens.extract(from: change))
-            }
+            if let previous = average.previousWeek { allow(average.thisWeek - previous, average.metric) }
         case .groupDifference(let difference):
-            let gap = FindingFormatter.format(abs(difference.difference), difference.outcome.unit)
-            allowed.formUnion(NumberTokens.extract(from: gap))
+            allow(difference.difference, difference.outcome)
+        case .correlation(let correlation):
+            allow(correlation.highGroupMedianY - correlation.lowGroupMedianY, correlation.y)
+        case .trend(let trend):
+            allow(trend.endValue - trend.startValue, trend.metric)
+        case .anomaly(let anomaly):
+            allow(anomaly.value - (anomaly.isAbove ? anomaly.usualHigh : anomaly.usualLow), anomaly.metric)
+        case .dayComparison(let comparison):
+            allow(comparison.value - comparison.baselineMedian, comparison.metric)
         }
         return allowed
     }

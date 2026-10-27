@@ -10,10 +10,34 @@ public enum FindingFormatter {
         case .seconds: duration(value)
         case .beatsPerMinute: "\(rounded(value)) bpm"
         case .milliseconds: "\(rounded(value)) ms"
-        case .millilitersPerKilogramMinute: String(format: "%.1f mL/kg/min", value)
-        case .minutes: "\(rounded(value)) min"
-        case .count: "\(rounded(value))"
+        case .millilitersPerKilogramMinute: "\(decimal(value, places: 1, trim: false)) mL/kg/min"
+        case .minutes: "\(grouped(rounded(value))) min"
+        case .count: grouped(rounded(value))
+        case .steps: "\(grouped(rounded(value))) steps"
+        case .kilocalories: "\(grouped(rounded(value))) kcal"
+        case .meters: "\(decimal(value / 1000, places: 1, trim: false)) km"
+        case .hours: rounded(value) == 1 ? "1 stand hour" : "\(rounded(value)) stand hours"
+        case .scale: "\(decimal(value, places: 1)) out of 5"
+        case .grams: "\(grouped(rounded(value))) g"
+        case .milliliters: "\(grouped(rounded(value))) mL"
+        case .milligrams: "\(grouped(rounded(value))) mg"
+        case .drinks: decimal(value, places: 1) == "1" ? "1 drink" : "\(decimal(value, places: 1)) drinks"
+        case .kilograms: "\(decimal(value, places: 1, trim: false)) kg"
+        case .percent: "\(decimal(value, places: 1))%"
+        case .breathsPerMinute: "\(decimal(value, places: 1, trim: false)) breaths/min"
+        case .degreesCelsius: "\(decimal(value, places: 2, trim: false)) °C"
         }
+    }
+
+    /// "56–62 bpm": the unit once, when both ends share it.
+    public static func range(_ low: Double, _ high: Double, _ unit: MetricUnit) -> String {
+        var lowText = format(low, unit)
+        let highText = format(high, unit)
+        if unit != .seconds, let space = lowText.firstIndex(of: " ") {
+            let suffix = lowText[space...]
+            if highText.hasSuffix(suffix) { lowText = String(lowText[..<space]) }
+        }
+        return "\(lowText)–\(highText)"
     }
 
     /// "7h 5m", or "45m" under an hour. Rounded to the minute.
@@ -26,6 +50,30 @@ public enum FindingFormatter {
 
     static func rounded(_ value: Double) -> Int {
         Int(value.rounded())
+    }
+
+    /// Fixed decimal places, with trailing zeros dropped when `trim` is set.
+    /// Locale-independent, so the validator sees exactly what was written.
+    static func decimal(_ value: Double, places: Int, trim: Bool = true) -> String {
+        var text = String(format: "%.\(places)f", value)
+        if trim, text.contains(".") {
+            while text.hasSuffix("0") { text.removeLast() }
+            if text.hasSuffix(".") { text.removeLast() }
+        }
+        return text
+    }
+
+    /// Thousands separated with commas: 12,345.
+    static func grouped(_ value: Int) -> String {
+        let digits = String(abs(value))
+        var groups: [Substring] = []
+        var end = digits.endIndex
+        while end > digits.startIndex {
+            let start = digits.index(end, offsetBy: -3, limitedBy: digits.startIndex) ?? digits.startIndex
+            groups.insert(digits[start..<end], at: 0)
+            end = start
+        }
+        return (value < 0 ? "-" : "") + groups.joined(separator: ",")
     }
 }
 

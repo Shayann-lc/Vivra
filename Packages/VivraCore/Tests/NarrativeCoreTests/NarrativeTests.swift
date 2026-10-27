@@ -88,7 +88,7 @@ private let allFindings = [sleepPattern, workoutPattern, sleepWeek, restingWeek,
 
 @Suite struct ValidatorTests {
     @Test func templateOutputAlwaysPasses() {
-        let draft = TemplateRenderer.render(allFindings)
+        let draft = TemplateRenderer.render(allFindings, kind: .weekly)
         #expect(NarrativeValidator.validate(draft, findings: allFindings).isEmpty)
         #expect(draft.bullets.count == allFindings.count)
     }
@@ -192,14 +192,17 @@ private actor ScriptedNarrator: Narrator {
         self.responses = responses
     }
 
-    func draft(findings: [Finding], corrections: [NarrativeViolation]) async throws -> NarrativeDraft {
+    func draft(kind: ReportKind, findings: [Finding], corrections: [NarrativeViolation]) async throws
+        -> NarrativeDraft
+    {
         receivedCorrections.append(corrections)
         return try responses.removeFirst().get()
     }
 }
 
 @Suite struct ComposerTests {
-    private let report = WeeklyReport(
+    private let report = InsightReport(
+        kind: .weekly,
         periodStart: .init(year: 2026, month: 3, day: 25),
         periodEnd: .init(year: 2026, month: 3, day: 31),
         findings: allFindings
@@ -231,7 +234,7 @@ private actor ScriptedNarrator: Narrator {
     @Test func fallsBackAfterTwoRejectedDrafts() async {
         let summary = await SummaryComposer.compose(report, narrator: ScriptedNarrator([.success(bad), .success(bad)]))
         #expect(summary.generator == .template)
-        #expect(summary.draft == TemplateRenderer.render(allFindings))
+        #expect(summary.draft == TemplateRenderer.render(allFindings, kind: .weekly))
     }
 
     @Test func fallsBackWhenTheModelThrows() async {
@@ -245,14 +248,15 @@ private actor ScriptedNarrator: Narrator {
     }
 
     @Test func capsFindingsSentToTheModel() async {
-        let many = WeeklyReport(
+        let many = InsightReport(
+            kind: .weekly,
             periodStart: report.periodStart, periodEnd: report.periodEnd, findings: allFindings + allFindings)
         let summary = await SummaryComposer.compose(many, narrator: nil)
         #expect(summary.findings.count == SummaryComposer.maximumFindings)
     }
 
     @Test func promptListsFindingIDsAndCorrections() {
-        let prompt = PromptBuilder.prompt(findings: [restingWeek], corrections: [.bannedTerm("bad")])
+        let prompt = PromptBuilder.prompt(kind: .weekly, findings: [restingWeek], corrections: [.bannedTerm("bad")])
         #expect(prompt.contains("[weekly.restingHeartRate] Your resting heart rate averaged 58 bpm"))
         #expect(prompt.contains("The word \"bad\" is not allowed."))
     }

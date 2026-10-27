@@ -2,26 +2,50 @@ import Foundation
 import VivraLogging
 import VivraModel
 
-/// A HealthKit data type Vivra syncs, as one anchored query each.
+/// A HealthKit data type Vivra syncs, as one anchored query each. Quantity
+/// and category cases share their names with `QuantityKind` and
+/// `CategoryKind`.
 public enum HealthDataType: String, Codable, Sendable, CaseIterable {
     case sleep
+    case workouts
+    case stateOfMind
+    case electrocardiogram
+    // Categories
+    case standHour
+    case mindfulSession
+    case irregularRhythm
+    // Heart
     case heartRate
     case restingHeartRate
     case heartRateVariabilitySDNN
     case walkingHeartRateAverage
     case vo2Max
-    case workouts
+    // Activity
+    case stepCount
+    case activeEnergyBurned
+    case basalEnergyBurned
+    case appleExerciseTime
+    case distanceWalkingRunning
+    // Nutrition and hydration
+    case dietaryEnergyConsumed
+    case dietaryProtein
+    case dietaryCarbohydrates
+    case dietaryFatTotal
+    case dietaryWater
+    case dietaryCaffeine
+    case numberOfAlcoholicBeverages
+    // Body
+    case bodyMass
+    case bodyFatPercentage
+    case respiratoryRate
+    case oxygenSaturation
+    case appleSleepingWristTemperature
 
-    public var quantityKind: QuantityKind? {
-        switch self {
-        case .heartRate: .heartRate
-        case .restingHeartRate: .restingHeartRate
-        case .heartRateVariabilitySDNN: .heartRateVariabilitySDNN
-        case .walkingHeartRateAverage: .walkingHeartRateAverage
-        case .vo2Max: .vo2Max
-        case .sleep, .workouts: nil
-        }
-    }
+    public var quantityKind: QuantityKind? { QuantityKind(rawValue: rawValue) }
+    public var categoryKind: CategoryKind? { CategoryKind(rawValue: rawValue) }
+
+    public init(_ kind: QuantityKind) { self.init(rawValue: kind.rawValue)! }
+    public init(_ kind: CategoryKind) { self.init(rawValue: kind.rawValue)! }
 }
 
 /// One page of changes from an anchored query.
@@ -29,6 +53,9 @@ public struct ChangeBatch: Sendable, Equatable {
     public var quantitySamples: [QuantitySample]
     public var sleepIntervals: [SleepInterval]
     public var workouts: [Workout]
+    public var categoryEvents: [CategoryEvent]
+    public var statesOfMind: [StateOfMindSample]
+    public var ecgRecords: [ECGRecord]
     /// HealthKit UUIDs of deleted objects of this type.
     public var deletedIDs: [UUID]
     /// Opaque, serialized `HKQueryAnchor`. Stored together with the batch.
@@ -40,6 +67,9 @@ public struct ChangeBatch: Sendable, Equatable {
         quantitySamples: [QuantitySample] = [],
         sleepIntervals: [SleepInterval] = [],
         workouts: [Workout] = [],
+        categoryEvents: [CategoryEvent] = [],
+        statesOfMind: [StateOfMindSample] = [],
+        ecgRecords: [ECGRecord] = [],
         deletedIDs: [UUID] = [],
         newAnchor: Data,
         hasMore: Bool
@@ -47,12 +77,18 @@ public struct ChangeBatch: Sendable, Equatable {
         self.quantitySamples = quantitySamples
         self.sleepIntervals = sleepIntervals
         self.workouts = workouts
+        self.categoryEvents = categoryEvents
+        self.statesOfMind = statesOfMind
+        self.ecgRecords = ecgRecords
         self.deletedIDs = deletedIDs
         self.newAnchor = newAnchor
         self.hasMore = hasMore
     }
 
-    public var addedCount: Int { quantitySamples.count + sleepIntervals.count + workouts.count }
+    public var addedCount: Int {
+        quantitySamples.count + sleepIntervals.count + workouts.count + categoryEvents.count + statesOfMind.count
+            + ecgRecords.count
+    }
 }
 
 /// Reads changes from Apple Health. The real implementation wraps

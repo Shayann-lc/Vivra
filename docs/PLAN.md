@@ -1,6 +1,6 @@
 # Vivra — Architecture and Phased Plan
 
-Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phase 0 is done. Phase 1 is approved and in progress.
+Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0 and 1 are done in code (Phase 1's device checks are pending with the owner). Phase 2 is approved and in progress.
 
 ## 1. Decisions already made
 
@@ -13,6 +13,8 @@ Status: **approved** (all of §11, with bundle ID and team as placeholders until
 | 5 | Direct Strava API integration | **Not building it** (approved). See §8. Workouts that Strava writes to Apple Health are still read through HealthKit. |
 | 6 | Dependencies | GRDB.swift + SQLCipher.swift (app runtime), XcodeGen (dev only). GRDB is **vendored** in `Vendor/GRDB`, because its SQLCipher build under SwiftPM requires a fork with an edited manifest (see `Vendor/GRDB/VENDORED.md`). |
 | 7 | Writing back to HealthKit | Opt-in write of mood (State of Mind) and drinks (water, caffeine, alcohol), Phase 2. |
+| 8 | Workout routes | **Not read or stored** in Phase 2 (owner, Phase 2 kickoff). GPS traces are the most sensitive data Vivra could hold, and nothing uses them yet. Revisit with a feature that needs them. |
+| 9 | Quick-log entry points | Widgets, controls and Shortcuts **open the app** at the Quick Log screen (owner, Phase 2 kickoff). The extension has no database access, no App Group and no shared Keychain item. |
 
 ## 2. Principles, restated as engineering rules
 
@@ -160,15 +162,46 @@ Every statistic is covered by unit tests with known answers, and every report ty
   6. Delete everything leaves no database, key or defaults behind.
 
 ### Phase 2 — Full data and logging
-- Remaining HealthKit types:
-  - Activity: steps, energy, exercise minutes, stand hours, distance, workout routes.
-  - State of Mind and mindful minutes.
-  - Nutrition and hydration, including caffeine and alcohol.
-  - Body: weight, body fat, respiratory rate, SpO₂, wrist temperature.
-  - ECG and irregular-rhythm events, listed only.
-- Quick logging for mood, energy, stress, meals, drinks and notes. Target **under 10 seconds**: one tap from the Home Screen widget, Control Center or the Lock Screen through App Intents, then a single screen of chips and sliders.
-- Full insight engine: correlations, lagged effects, trends, anomalies, confidence levels.
-- Daily check-in report.
+
+**Data**
+- New HealthKit read types, each a `HealthDataType` with its own anchor:
+  - Activity: steps, active and basal energy, exercise minutes, walking/running distance, stand hours.
+  - Mind: State of Mind, mindful minutes.
+  - Nutrition: dietary energy, protein, carbohydrates, fat, water, caffeine, alcoholic beverages.
+  - Body: weight, body fat, respiratory rate, blood oxygen, sleeping wrist temperature.
+  - Heart events: ECG recordings (date and Apple's classification only) and irregular rhythm notifications. They are listed, never interpreted, and never used in insights.
+- New permission groups: Activity, Mind, Nutrition, Body. ECG and irregular rhythm join Heart. People who finished onboarding in Phase 1 get a one-time card on the dashboard to review the new groups.
+- Cumulative activity totals: iPhone and Watch both record steps, energy, distance and exercise, so summing raw samples double-counts. Daily totals come from a per-day, per-source SQL sum over day boundaries the engine computes in Swift. The engine then keeps the **largest single source** per day. Dietary totals add across sources, excluding Vivra's own written samples.
+- Schema v3: `category_event` (stand hours, mindful sessions, irregular rhythm), `state_of_mind`, `ecg_record`, `log_entry`, and `report.kind`.
+
+**Quick logging (under 10 seconds)**
+- One screen of chips: mood, energy and stress on 1–5 scales, drinks (water, coffee, tea, alcohol with editable default amounts), meal, and an optional note. **Save** stores everything at one timestamp. Entries from today can be deleted.
+- Entry points: a Log tab, an App Shortcut (`OpenQuickLogIntent`), a Control Center / Lock Screen control, and a Home Screen and Lock Screen widget. All of them open the app at Quick Log (decision 9).
+- Optional write-back (Settings, off by default): mood becomes a momentary State of Mind (1–5 mapped to valence −1…1), water becomes dietary water, coffee and tea become caffeine, and alcohol becomes alcoholic beverages. The HealthKit UUID is kept with the log entry, and deleting the entry deletes the sample. When samples sync back from HealthKit, anything Vivra wrote is ignored (`SourcePolicy.ownBundleIdentifier`), so nothing is counted twice.
+
+**Insight engine**
+- Daily metrics for every type above, plus logged mood, energy and stress. State of Mind valence is mapped onto the same 1–5 scale and averaged with logs.
+- **Correlations:** Spearman ρ over a curated catalogue of directional pairs (`PatternCatalog`), same-day or with a one-day lag. Examples: alcohol → next night's HRV, caffeine → next night's sleep, last night's sleep → that day's mood. A curated list keeps multiple testing small and the pairs meaningful.
+  - p-value and 95% interval from Fisher z with the Spearman standard error 1.06/√(n−3) (Fieller et al., 1957).
+  - Gates: n ≥ 14 paired days, |ρ| ≥ 0.3, an interval that excludes 0, and BH (q = 0.10) across every pattern tested in the report, Phase 1's two group differences included.
+  - Each correlation is shown concretely: the outcome's median on days in the top third of X against the bottom third. When at least a third of X is tied at its minimum (for example, days with no alcohol), it compares "none" against "some".
+- **Stability:** a pattern is stable when ρ has the same sign in both halves of the window, each with n ≥ 7.
+  - High confidence: n ≥ 28, adjusted p ≤ 0.01 and stable.
+  - Medium: n ≥ 14 and adjusted p ≤ 0.05, and not unstable.
+  - Low: anything else.
+- **Trends:** Theil–Sen slope over the last 28 days, with significance from the Mann–Kendall test (tie-corrected), BH across trend tests, n ≥ 14 days with data, and an overall change of at least the metric's minimum effect. Shown as "from about A to about B".
+- **Anomalies:** yesterday's or today's value compared with the previous 28 days (n ≥ 14). Robust z = (x − median) / (1.4826 · MAD), flagged at |z| ≥ 3.5 (Iglewicz & Hoaglin). Shown against the person's usual range (10th–90th percentile).
+- Typical-range notes (`suggestProfessional`) are added for blood oxygen below 90% and respiratory rate outside 10–24 breaths/min, alongside resting heart rate.
+- **Daily check-in:** last night's sleep, plus today's or yesterday's resting HR, HRV, steps, exercise and logged mood, each against its 28-day median. It also includes any anomalies and the single highest-confidence pattern. It uses the same composer, validator and template fallback as the weekly summary.
+- An **Insights** tab holds the daily check-in, the weekly summary, and a Patterns list. The list shows every current pattern and trend with its confidence, in template wording only (no model).
+
+**Definition of done**
+1. Every new type syncs incrementally with anchors, deletes included. Covered by the fake data source in SyncCore tests and the repository on the simulator.
+2. Quick Log saves a mood plus a drink in two taps and Save. The widget, the control and the App Shortcut each open the app at Quick Log (checked on a device).
+3. With write-back on, a logged mood appears in Apple Health as State of Mind and a coffee appears as caffeine. Deleting the entry removes both. Synced copies are never counted twice (unit test plus a device check).
+4. The engine has known-answer tests: Spearman and Mann–Kendall against scipy, Theil–Sen and robust z by hand. Gates, BH, stability and every finding kind have tests. Every template sentence passes the validator.
+5. A daily check-in is produced from the model on an Apple Intelligence device and from templates without one, and both pass the validator.
+6. CI is green. `docs/DEVICE_TEST.md` gains the Phase 2 steps.
 
 ### Phase 3 — Gamification (rewards logging, not exercise)
 - XP for logging only, a daily goal (default: one check-in), streaks with earned freezes (one per 7-day streak, up to two held), and achievements for consistency and exploring the app.

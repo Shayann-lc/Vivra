@@ -49,7 +49,7 @@ public struct DashboardSnapshot: Sendable, Equatable {
         let window = Set(days)
 
         let nights = SleepNightBuilder.nights(from: sleepIntervals, calendar: calendar)
-        let metrics = DailyMetrics.build(sleepNights: nights, samples: samples, workouts: [], calendar: calendar)
+        let metrics = DailyMetrics.build(HealthDataset(samples: samples), calendar: calendar)
 
         let sleep = nights.filter { window.contains($0.wakeDay) }.map {
             SleepDay(day: $0.wakeDay, asleep: $0.asleep, stages: $0.stages)

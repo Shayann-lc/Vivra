@@ -10,25 +10,23 @@ import VivraModel
         samples: [QuantitySample] = [],
         workouts: [Workout] = [],
         policy: SourcePolicy = .default
-    ) -> WeeklyReport {
+    ) -> InsightReport {
         WeeklyReportBuilder.build(
-            sleepIntervals: sleep,
-            samples: samples,
-            workouts: workouts,
-            clock: FixedClock(Fixtures.now),
+            Fixtures.dataset(sleep: sleep, samples: samples, workouts: workouts),
+            clock: Fixtures.clock,
             calendar: Fixtures.utc,
             sourcePolicy: policy
         )
     }
 
-    private func weekly(_ report: WeeklyReport, _ metric: Metric) -> WeeklyAverage? {
+    private func weekly(_ report: InsightReport, _ metric: Metric) -> WeeklyAverage? {
         for finding in report.findings {
             if case .weeklyAverage(let average) = finding.detail, average.metric == metric { return average }
         }
         return nil
     }
 
-    private func pattern(_ report: WeeklyReport, _ id: String) -> GroupDifference? {
+    private func pattern(_ report: InsightReport, _ id: String) -> GroupDifference? {
         for finding in report.findings where finding.id == id {
             if case .groupDifference(let difference) = finding.detail { return difference }
         }
