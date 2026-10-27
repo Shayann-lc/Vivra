@@ -68,6 +68,17 @@ if grep -nE '^[[:space:]]+(url|github):' project.yml; then
   fail "project.yml may only reference local packages"
 fi
 
+# 5. Non-commercial reference data stays behind its compilation condition.
+if [ -f App/NonCommercialNorms.swift ] && [ "$(head -n 1 App/NonCommercialNorms.swift)" != "#if VIVRA_NONCOMMERCIAL" ]; then
+  fail "App/NonCommercialNorms.swift must start with #if VIVRA_NONCOMMERCIAL"
+fi
+friend_elsewhere="$(grep -rln --include='*.swift' --exclude-dir=.build 'friend-2015\|FRIEND registry' App Packages Shared Widgets \
+  | grep -v '^App/NonCommercialNorms.swift$' | grep -v 'Views/MetricDetailView.swift$')"
+if [ -n "$friend_elsewhere" ]; then
+  fail "FRIEND reference data must only live in App/NonCommercialNorms.swift"
+  echo "$friend_elsewhere"
+fi
+
 if [ "$failed" -ne 0 ]; then
   echo "Guard checks failed."
   exit 1

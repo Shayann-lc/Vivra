@@ -5,10 +5,10 @@ and the definition of done for each phase.
 
 ## Current phase
 
-**Phase 3** (progress and reminders, plus an interface informed by public
-reviews in `docs/UX_RESEARCH.md`) is done in code, with CI green. Its device
-steps in `docs/DEVICE_TEST.md` are pending with the owner. **Phase 4 needs the
-owner's explicit approval before it starts.**
+**Phase 4** (monthly deep-dive, "Why do I feel off today?", reference norms)
+is approved and in progress. Its definition of done is in PLAN §7, and the
+norm sources are in `docs/NORMS.md`. **Phase 5 needs the owner's explicit
+approval before it starts.**
 
 ## Hard rules
 
@@ -37,6 +37,10 @@ owner's explicit approval before it starts.**
   composite scores; additive changes only (never remove a view people use).
 - **Progress rewards logging only** and never uses loss language
   (`ProgressCopy.lossPhrases` is enforced by a test).
+- **Reference norms** follow `docs/NORMS.md`: primary sources only, licence
+  recorded, citation and caveats shown, neutral positions only. FRIEND VO2 max
+  data lives only in `App/NonCommercialNorms.swift` behind
+  `VIVRA_NONCOMMERCIAL` (PLAN decision 10; enforced by the guard script).
 
 ## Conventions
 

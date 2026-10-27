@@ -39,6 +39,45 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Picker(
+                        "Reference data",
+                        selection: Binding(
+                            get: { model.comparisonChoice },
+                            set: { choice in
+                                Task { await model.setComparison(choice: choice, birthYear: model.birthYear) }
+                            }
+                        )
+                    ) {
+                        ForEach(ComparisonChoice.allCases) { Text($0.label).tag($0) }
+                    }
+                    if model.comparisonChoice != .none {
+                        Picker(
+                            "Birth year",
+                            selection: Binding(
+                                get: { model.birthYear ?? 0 },
+                                set: { year in
+                                    Task {
+                                        await model.setComparison(
+                                            choice: model.comparisonChoice, birthYear: year == 0 ? nil : year)
+                                    }
+                                }
+                            )
+                        ) {
+                            Text("Not set").tag(0)
+                            ForEach(Self.birthYears, id: \.self) { Text(String($0)).tag($0) }
+                        }
+                    }
+                } header: {
+                    Text("Comparisons")
+                } footer: {
+                    Text(
+                        "Lets Vivra show where your values sit in published reference data, with sources. Most "
+                            + "reference studies only report women's and men's data, so choose the tables that suit you. "
+                            + "Stored only in Vivra's encrypted storage."
+                    )
+                }
+
+                Section {
                     Toggle(
                         "Daily Reminder",
                         isOn: Binding(
@@ -128,6 +167,11 @@ struct SettingsView: View {
             }
         }
     }
+
+    private static let birthYears: [Int] = {
+        let year = Calendar.autoupdatingCurrent.component(.year, from: .now)
+        return Array(((year - 100)...(year - 18)).reversed())
+    }()
 
     private static func date(minutes: Int) -> Date {
         Calendar.autoupdatingCurrent.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: .now)

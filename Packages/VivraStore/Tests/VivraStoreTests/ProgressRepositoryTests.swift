@@ -52,4 +52,16 @@ import VivraModel
 
         #expect(try await repository.allLogs() == [older, newer])
     }
+
+    @Test func settingsSetReplaceAndRemove() async throws {
+        let (repository, directory) = try makeRepository()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        #expect(try await repository.setting("comparison.birthYear") == nil)
+        try await repository.setSetting("comparison.birthYear", "1984")
+        try await repository.setSetting("comparison.birthYear", "1985")
+        #expect(try await repository.setting("comparison.birthYear") == "1985")
+        try await repository.setSetting("comparison.birthYear", nil)
+        #expect(try await repository.setting("comparison.birthYear") == nil)
+    }
 }

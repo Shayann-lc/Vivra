@@ -65,6 +65,16 @@ jobs:
             -destination "$destination" \
             -resultBundlePath "$RUNNER_TEMP/Vivra.xcresult"
 
+      - name: Build owner's non-commercial variant (compile check only)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Vivra.xcodeproj \
+            -scheme Vivra \
+            -destination 'generic/platform=iOS Simulator' \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) VIVRA_NONCOMMERCIAL' \
+            | tail -n 40
+
       - name: Upload test results
         if: failure()
         uses: actions/upload-artifact@v4

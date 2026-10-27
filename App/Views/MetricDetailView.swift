@@ -61,6 +61,8 @@ struct MetricDetailView: View {
                 }
             }
 
+            ReferenceSection(model: model, metric: metric)
+
             Section("About this measurement") {
                 Text(MetricDescriptions.description(metric))
                 Text(Copy.shortDisclaimer)
@@ -98,6 +100,55 @@ struct MetricDetailView: View {
         case .degreesCelsius: "°C"
         case .breathsPerMinute: "Breaths/min"
         default: "Value"
+        }
+    }
+}
+
+/// Published reference data for this metric, with citation and caveats.
+/// Never a category or verdict (docs/NORMS.md).
+private struct ReferenceSection: View {
+    let model: AppModel
+    let metric: Metric
+
+    var body: some View {
+        let lines = model.references(for: metric)
+        if !lines.isEmpty || model.hasReferenceData(metric) || metric == .vo2Max {
+            Section {
+                ForEach(lines) { line in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(line.text)
+                        Text(line.caveat)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        if let url = URL(string: line.url) {
+                            Link(destination: url) {
+                                Text("Source: \(line.citation)")
+                                    .font(.caption)
+                                    .multilineTextAlignment(.leading)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+                if lines.isEmpty && model.hasReferenceData(metric) {
+                    Text(
+                        "To compare with published reference data, set your birth year and reference data in Settings › Comparisons."
+                    )
+                    .foregroundStyle(.secondary)
+                }
+                if metric == .vo2Max {
+                    Text(
+                        "Apple Health shows your Cardio Fitness level for your age and sex, based on the FRIEND registry: "
+                            + "Health › Browse › Respiratory › Cardio Fitness."
+                    )
+                    .font(lines.isEmpty ? .body : .footnote)
+                    .foregroundStyle(lines.isEmpty ? .primary : .secondary)
+                }
+            } header: {
+                Text("Compared with published data")
+            } footer: {
+                Text("A position in a population, not a judgement. \(Copy.shortDisclaimer)")
+            }
         }
     }
 }

@@ -235,6 +235,28 @@ public final class HealthRepository: SyncStore, Sendable {
         }
     }
 
+    // MARK: Settings
+
+    /// Small personal settings kept in the encrypted database rather than
+    /// UserDefaults (for example the comparison profile).
+    public func setting(_ key: String) async throws -> String? {
+        try await writer.read { db in
+            try String.fetchOne(db, sql: "SELECT value FROM setting WHERE key = ?", arguments: [key])
+        }
+    }
+
+    /// Nil removes the setting.
+    public func setSetting(_ key: String, _ value: String?) async throws {
+        try await writer.write { db in
+            if let value {
+                try db.execute(
+                    sql: "INSERT OR REPLACE INTO setting (key, value) VALUES (?, ?)", arguments: [key, value])
+            } else {
+                try db.execute(sql: "DELETE FROM setting WHERE key = ?", arguments: [key])
+            }
+        }
+    }
+
     // MARK: Progress
 
     /// Sets the daily goal from `day` onwards (replacing a change made the

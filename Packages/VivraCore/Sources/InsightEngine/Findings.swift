@@ -242,6 +242,58 @@ public struct DayComparison: Codable, Sendable, Equatable {
     }
 }
 
+/// A metric averaged over a period (30 days in the monthly report), next to
+/// the period before.
+public struct PeriodAverage: Codable, Sendable, Equatable {
+    public let metric: Metric
+    public let periodDays: Int
+    /// Mean of daily values, or the total for workout metrics.
+    public let value: Double
+    public let valueDays: Int
+    public let previous: Double?
+    public let previousDays: Int
+
+    public init(metric: Metric, periodDays: Int, value: Double, valueDays: Int, previous: Double?, previousDays: Int) {
+        self.metric = metric
+        self.periodDays = periodDays
+        self.value = value
+        self.valueDays = valueDays
+        self.previous = previous
+        self.previousDays = previousDays
+    }
+}
+
+/// A known pattern whose condition was met recently: "yesterday you had
+/// 190 mg of caffeine; on days with that much, you slept …". Used by the
+/// feeling-off report. It describes a past association, never a reason.
+public struct ApplicablePattern: Codable, Sendable, Equatable {
+    public enum Basis: Codable, Sendable, Equatable {
+        case correlation(Correlation)
+        case groupDifference(GroupDifference)
+    }
+
+    public let basis: Basis
+    /// The metric whose recent value matched the pattern.
+    public let metric: Metric
+    /// 0: today (or last night, for sleep). 1: yesterday.
+    public let daysAgo: Int
+    public let value: Double
+
+    public init(basis: Basis, metric: Metric, daysAgo: Int, value: Double) {
+        self.basis = basis
+        self.metric = metric
+        self.daysAgo = daysAgo
+        self.value = value
+    }
+
+    public var confidence: Confidence {
+        switch basis {
+        case .correlation(let correlation): correlation.confidence
+        case .groupDifference(let difference): difference.confidence
+        }
+    }
+}
+
 public enum FindingDetail: Codable, Sendable, Equatable {
     case weeklyAverage(WeeklyAverage)
     case groupDifference(GroupDifference)
@@ -249,6 +301,8 @@ public enum FindingDetail: Codable, Sendable, Equatable {
     case trend(Trend)
     case anomaly(Anomaly)
     case dayComparison(DayComparison)
+    case periodAverage(PeriodAverage)
+    case applicablePattern(ApplicablePattern)
 
     /// Patterns and trends carry a confidence; descriptive findings don't.
     public var confidence: Confidence? {
@@ -256,7 +310,8 @@ public enum FindingDetail: Codable, Sendable, Equatable {
         case .groupDifference(let difference): difference.confidence
         case .correlation(let correlation): correlation.confidence
         case .trend(let trend): trend.confidence
-        case .weeklyAverage, .anomaly, .dayComparison: nil
+        case .applicablePattern(let pattern): pattern.confidence
+        case .weeklyAverage, .anomaly, .dayComparison, .periodAverage: nil
         }
     }
 
@@ -285,9 +340,12 @@ public struct Finding: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
-public enum ReportKind: String, Codable, Sendable {
+public enum ReportKind: String, Codable, Sendable, CaseIterable {
     case daily
     case weekly
+    case monthly
+    /// "Why do I feel off today?"
+    case feelingOff
 }
 
 public struct InsightReport: Codable, Sendable, Equatable {

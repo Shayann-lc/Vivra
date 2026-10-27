@@ -3,6 +3,7 @@ import Gamification
 import HealthSync
 import InsightEngine
 import NarrativeCore
+import Norms
 import Observation
 import SyncCore
 import VivraLogging
@@ -60,6 +61,42 @@ struct QuickLogDraft: Equatable {
     }
 }
 
+/// Which published reference tables to compare with. App-level so views and
+/// tests don't depend on package types.
+enum ComparisonChoice: String, CaseIterable, Identifiable {
+    case none
+    case women
+    case men
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .none: "Don't compare"
+        case .women: "Women's reference data"
+        case .men: "Men's reference data"
+        }
+    }
+
+    var group: ReferenceGroup? {
+        switch self {
+        case .none: nil
+        case .women: .women
+        case .men: .men
+        }
+    }
+}
+
+/// One comparison with published data, ready to show with its citation.
+struct ReferenceLine: Equatable, Identifiable {
+    let text: String
+    let sourceName: String
+    let citation: String
+    let url: String
+    let caveat: String
+    var id: String { text }
+}
+
 /// ECG recordings and irregular rhythm notifications, listed as Apple Health
 /// recorded them.
 struct HeartRecordings: Equatable {
@@ -97,6 +134,8 @@ final class AppModel {
     private(set) var lastDeletionReport: DeletionReport?
     private(set) var progress: ProgressSnapshot?
     private(set) var glance: TodayGlance?
+    private(set) var comparisonChoice = ComparisonChoice.none
+    private(set) var birthYear: Int?
     /// Shown briefly after a Quick Log save.
     var saveMessage: String?
     /// Offer a daily reminder (once, after the first save).
@@ -169,9 +208,10 @@ final class AppModel {
                     calendar: environment.calendar()
                 )
             }
-            for kind in [ReportKind.daily, .weekly] {
+            for kind in ReportKind.allCases {
                 latestReports[kind] = try? await repository.latestReport(kind: kind)
             }
+            await loadComparisonProfile()
         } catch {
             Log.app.failure("Store open failed", code: (error as NSError).code)
             phase = .storeUnavailable
@@ -352,6 +392,10 @@ final class AppModel {
                     WeeklyReportBuilder.build(dataset, clock: clock, calendar: calendar, sourcePolicy: reportPolicy)
                 case .daily:
                     DailyCheckInBuilder.build(dataset, clock: clock, calendar: calendar, sourcePolicy: reportPolicy)
+                case .monthly:
+                    MonthlyReportBuilder.build(dataset, clock: clock, calendar: calendar, sourcePolicy: reportPolicy)
+                case .feelingOff:
+                    FeelingOffBuilder.build(dataset, clock: clock, calendar: calendar, sourcePolicy: reportPolicy)
                 }
             let summary = await SummaryComposer.compose(report, narrator: environment.makeNarrator())
             let stored = StoredReport(
@@ -363,9 +407,83 @@ final class AppModel {
             )
             try await repository.saveReport(stored)
             latestReports[kind] = stored
-            await record(kind == .weekly ? .createdWeeklySummary : .createdCheckIn)
+            switch kind {
+            case .weekly: await record(.createdWeeklySummary)
+            case .daily: await record(.createdCheckIn)
+            case .monthly, .feelingOff: break
+            }
         } catch {
             Log.app.failure("Report failed", code: (error as NSError).code)
+        }
+    }
+
+    // MARK: Reference comparisons
+
+    /// The bundled tables, plus FRIEND VO2 max medians in the owner's
+    /// non-commercial build only (PLAN decision 10).
+    var normTable: NormTable {
+        #if VIVRA_NONCOMMERCIAL
+            .bundled.merging(.friendMedians)
+        #else
+            .bundled
+        #endif
+    }
+
+    private static let birthYearKey = "comparison.birthYear"
+    private static let groupKey = "comparison.group"
+
+    private func loadComparisonProfile() async {
+        guard let repository else { return }
+        let storedYear = try? await repository.setting(Self.birthYearKey)
+        let storedGroup = try? await repository.setting(Self.groupKey)
+        birthYear = storedYear.flatMap { Int($0) }
+        comparisonChoice = storedGroup.flatMap { ComparisonChoice(rawValue: $0) } ?? .none
+    }
+
+    /// Stored in the encrypted database. Comparisons need both values.
+    func setComparison(choice: ComparisonChoice, birthYear: Int?) async {
+        guard let repository else { return }
+        do {
+            try await repository.setSetting(Self.groupKey, choice == .none ? nil : choice.rawValue)
+            try await repository.setSetting(Self.birthYearKey, birthYear.map(String.init))
+        } catch {
+            Log.app.failure("Comparison save failed", code: (error as NSError).code)
+        }
+        await loadComparisonProfile()
+    }
+
+    var comparisonProfile: ComparisonProfile? {
+        guard let birthYear, let group = comparisonChoice.group else { return nil }
+        return ComparisonProfile(birthYear: birthYear, group: group)
+    }
+
+    /// Whether any reference data exists for `metric` in this build.
+    func hasReferenceData(_ metric: Metric) -> Bool { normTable.metrics.contains(metric) }
+
+    /// Comparisons for a metric's 28-day median (latest value for VO2 max),
+    /// with citations. Empty when the profile isn't set or nothing applies.
+    func references(for metric: Metric) -> [ReferenceLine] {
+        guard let profile = comparisonProfile, let history = history(metric) else { return [] }
+        let usesLatest = metric == .vo2Max
+        guard let value = usesLatest ? history.points.last?.value : history.median else { return [] }
+        let valueText = FindingFormatter.format(value, metric.unit)
+        let subject = usesLatest ? "Your latest estimate" : "Your 28-day median"
+        let year = environment.calendar().calendar.component(.year, from: environment.clock.now)
+        return NormComparer.compare(metric, value: value, profile: profile, year: year, table: normTable).map {
+            comparison in
+            let subjectWithValue: String
+            if case .percentile = comparison {
+                subjectWithValue = "\(subject) of \(valueText)"
+            } else {
+                subjectWithValue = subject
+            }
+            return ReferenceLine(
+                text: NormText.sentence(comparison, subject: subjectWithValue, valueText: valueText),
+                sourceName: comparison.source.name,
+                citation: comparison.source.citation,
+                url: comparison.source.url,
+                caveat: comparison.source.caveat
+            )
         }
     }
 
@@ -581,6 +699,8 @@ final class AppModel {
         progress = nil
         glance = nil
         analysisCache = nil
+        comparisonChoice = .none
+        birthYear = nil
 
         let directory = try? environment.storeDirectory()
         if let directory {

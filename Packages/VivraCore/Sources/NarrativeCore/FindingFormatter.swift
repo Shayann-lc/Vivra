@@ -48,7 +48,7 @@ public enum FindingFormatter {
         return hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
     }
 
-    static func rounded(_ value: Double) -> Int {
+    public static func rounded(_ value: Double) -> Int {
         Int(value.rounded())
     }
 

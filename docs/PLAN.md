@@ -254,8 +254,9 @@ The owner asked for the interface to draw on public reviews of Whoop, Fitbit, Ap
 - A new report kind, `monthly`, covering the last 30 complete days. It includes:
   - every current pattern;
   - trends;
-  - each metric averaged over the 30 days next to the 30 days before (a new finding kind, `periodAverage`, with a metric needing at least 10 days in a period);
-  - unusual values from the period.
+  - each metric averaged over the 30 days next to the 30 days before (a new finding kind, `periodAverage`, with a metric needing at least 10 days in a period).
+
+  Unusual values stay in the daily check-in and "Why do I feel off today?", where they're current.
 - The same composer, validator and template fallback as the other reports. It's shown in Insights.
 
 **"Why do I feel off today?"**

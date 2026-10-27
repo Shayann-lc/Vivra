@@ -8,6 +8,8 @@ public enum TemplateRenderer {
         switch kind {
         case .weekly: "Your last 7 days"
         case .daily: "Today's check-in"
+        case .monthly: "Your last 30 days"
+        case .feelingOff: "What stood out today"
         }
     }
 
@@ -15,6 +17,8 @@ public enum TemplateRenderer {
         switch kind {
         case .weekly: "Not enough data for a summary yet"
         case .daily: "Not enough data for a check-in yet"
+        case .monthly: "Not enough data for a monthly summary yet"
+        case .feelingOff: "Nothing stood out in today's data"
         }
     }
 
@@ -34,7 +38,63 @@ public enum TemplateRenderer {
         case .trend(let trend): sentence(for: trend)
         case .anomaly(let anomaly): sentence(for: anomaly)
         case .dayComparison(let comparison): sentence(for: comparison)
+        case .periodAverage(let average): sentence(for: average)
+        case .applicablePattern(let pattern): sentence(for: pattern)
         }
+    }
+
+    // MARK: Period averages
+
+    private static func sentence(for average: PeriodAverage) -> String {
+        let metric = average.metric
+        let current = format(average.value, metric)
+        let previous = average.previous.map { format($0, metric) }
+        let period = "the last \(average.periodDays) days"
+        let before = "In the \(average.periodDays) days before"
+        let days = average.valueDays
+
+        switch metric {
+        case .sleepDuration:
+            return
+                "You slept an average of \(current) a night over \(period) (\(days) \(plural(days, "night")) recorded)."
+                + (previous.map { " \(before), the average was \($0)." } ?? "")
+        case .workoutCount:
+            let count = FindingFormatter.rounded(average.value)
+            return "You recorded \(current) \(plural(count, "workout")) over \(period)"
+                + (previous.map { ", compared with \($0) in the \(average.periodDays) days before." } ?? ".")
+        case .workoutMinutes:
+            return "Your workouts added up to \(current) over \(period)"
+                + (previous.map { ", compared with \($0) in the \(average.periodDays) days before." } ?? ".")
+        default:
+            if MetricWords.isDailyTotal(metric) {
+                return
+                    "You averaged \(current)\(MetricWords.amountSuffix(metric)) a day over \(period) (\(days) \(plural(days, "day")) recorded)."
+                    + (previous.map { " \(before), the average was \($0)." } ?? "")
+            }
+            return
+                "Your \(MetricWords.noun(metric)) averaged \(current) over \(period) (\(days) \(plural(days, "day")) recorded)."
+                + (previous.map { " \(before), it averaged \($0)." } ?? "")
+        }
+    }
+
+    // MARK: Applicable patterns
+
+    private static func sentence(for pattern: ApplicablePattern) -> String {
+        let value = format(pattern.value, pattern.metric)
+        let recent: String =
+            if pattern.metric == .sleepDuration {
+                "Last night you slept \(value)."
+            } else if MetricWords.isDailyTotal(pattern.metric) {
+                "\(MetricWords.when(pattern.daysAgo).capitalizedFirst) you recorded \(value)\(MetricWords.amountSuffix(pattern.metric))."
+            } else {
+                "\(MetricWords.when(pattern.daysAgo).capitalizedFirst) your \(MetricWords.noun(pattern.metric)) was \(value)."
+            }
+        let earlier: String =
+            switch pattern.basis {
+            case .correlation(let correlation): sentence(for: correlation)
+            case .groupDifference(let difference): sentence(for: difference)
+            }
+        return "\(recent) In your recent history: \(earlier.lowercasedFirst)"
     }
 
     // MARK: Weekly averages
@@ -179,5 +239,10 @@ extension String {
     fileprivate var capitalizedFirst: String {
         guard let first else { return self }
         return first.uppercased() + dropFirst()
+    }
+
+    fileprivate var lowercasedFirst: String {
+        guard let first else { return self }
+        return first.lowercased() + dropFirst()
     }
 }

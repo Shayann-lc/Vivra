@@ -50,8 +50,8 @@ public enum NarrativeViolation: Sendable, Equatable, CustomStringConvertible {
 }
 
 public enum NarrativeValidator {
-    /// Report windows (7, 28 and 90 days) may always be mentioned.
-    static let alwaysAllowedNumbers: Set<String> = ["7", "28", "90"]
+    /// Report windows (7, 28, 30 and 90 days) may always be mentioned.
+    static let alwaysAllowedNumbers: Set<String> = ["7", "28", "30", "90"]
 
     public static func validate(_ draft: NarrativeDraft, findings: [Finding]) -> [NarrativeViolation] {
         var violations: [NarrativeViolation] = []
@@ -109,6 +109,15 @@ public enum NarrativeValidator {
             allow(anomaly.value - (anomaly.isAbove ? anomaly.usualHigh : anomaly.usualLow), anomaly.metric)
         case .dayComparison(let comparison):
             allow(comparison.value - comparison.baselineMedian, comparison.metric)
+        case .periodAverage(let average):
+            if let previous = average.previous { allow(average.value - previous, average.metric) }
+        case .applicablePattern(let pattern):
+            switch pattern.basis {
+            case .correlation(let correlation):
+                allow(correlation.highGroupMedianY - correlation.lowGroupMedianY, correlation.y)
+            case .groupDifference(let difference):
+                allow(difference.difference, difference.outcome)
+            }
         }
         return allowed
     }

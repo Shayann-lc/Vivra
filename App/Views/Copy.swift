@@ -19,6 +19,11 @@ enum Copy {
         Vivra lists these exactly as Apple Health recorded them. It doesn't interpret them or use them in insights.
         """
 
+    static let feelingOffNote = """
+        Vivra can't tell why you feel a certain way. It shows things in your data that stood out today, and \
+        patterns seen before.
+        """
+
     static let healthAccessHint =
         "If you expected data here, check Vivra's access in Settings › Privacy & Security › Health › Vivra."
 }

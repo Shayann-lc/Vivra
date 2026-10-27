@@ -164,3 +164,37 @@ These cover the Phase 2 definition-of-done items that CI can't check (PLAN §7, 
 3. Set the time two minutes ahead again, then save a Quick Log before it fires.
    ✅ No notification today.
 4. Turn the reminder off. ✅ No more notifications.
+
+---
+
+# Phase 4 device steps
+
+## A. Monthly summary and "Why do I feel off today?"
+
+1. Insights › **Create Monthly Summary**. ✅ The header shows a 30-day range, and the
+   lines compare the last 30 days with the 30 before.
+2. Insights › **Why do I feel off today?** ✅ The answer is headed "What stood out
+   today", and the note says Vivra can't tell why you feel a certain way. Each line is
+   a recent value next to your usual, or a known pattern that applies today. None says
+   "because" or "the reason".
+3. On a day close to your usual, ✅ it says "Nothing stood out in today's data".
+
+## B. Comparisons with published data
+
+1. Metric detail for **Resting heart rate**, before setting anything. ✅ It says to set
+   your birth year and reference data in Settings › Comparisons.
+2. Settings › **Comparisons**: choose reference data and a birth year.
+3. **Resting heart rate** ✅ shows "Your 28-day median of … is between the …
+   percentiles for … aged … in the CDC's national survey", the caveat about seated
+   pulse versus Apple Watch, and a tappable source.
+4. **Sleep** (ages 18–60) ✅ shows the AASM/SRS "7 hours or more" sentence and your
+   28-day median.
+5. **VO2 max** ✅ shows the pointer to Apple Health › Respiratory › Cardio Fitness, and
+   no FRIEND numbers (default build).
+
+## C. Owner's non-commercial build
+
+1. In `Config/Local.xcconfig`, uncomment the `SWIFT_ACTIVE_COMPILATION_CONDITIONS`
+   line, then regenerate and run.
+2. **VO2 max** ✅ also shows "The median for … aged … in the FRIEND registry is …", the
+   lab-versus-watch caveat, and the citation.

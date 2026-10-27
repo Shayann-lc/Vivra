@@ -18,6 +18,7 @@ let package = Package(
         .library(name: "InsightEngine", targets: ["InsightEngine"]),
         .library(name: "NarrativeCore", targets: ["NarrativeCore"]),
         .library(name: "Gamification", targets: ["Gamification"]),
+        .library(name: "Norms", targets: ["Norms"]),
     ],
     targets: [
         .target(name: "VivraLogging"),
@@ -26,6 +27,8 @@ let package = Package(
         .target(name: "InsightEngine", dependencies: ["VivraModel"]),
         .target(name: "NarrativeCore", dependencies: ["InsightEngine", "VivraModel", "VivraLogging"]),
         .target(name: "Gamification", dependencies: ["VivraModel"]),
+        .target(name: "Norms", dependencies: ["InsightEngine", "NarrativeCore"]),
+        .testTarget(name: "NormsTests", dependencies: ["Norms", "InsightEngine", "NarrativeCore"]),
         .testTarget(name: "GamificationTests", dependencies: ["Gamification", "VivraModel", "NarrativeCore"]),
         .testTarget(name: "VivraLoggingTests", dependencies: ["VivraLogging"]),
         .testTarget(name: "VivraModelTests", dependencies: ["VivraModel"]),

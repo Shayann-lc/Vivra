@@ -66,6 +66,10 @@ public enum PromptBuilder {
             switch kind {
             case .weekly: "Write a summary of the person's last 7 days from these findings."
             case .daily: "Write a short check-in for the person's day from these findings."
+            case .monthly: "Write a summary of the person's last 30 days from these findings."
+            case .feelingOff:
+                "The person asked why they might feel off today. Restate these findings as things that stood out "
+                    + "or patterns seen before. Never say or suggest that any of them is the reason."
             }
         var lines = [
             task,

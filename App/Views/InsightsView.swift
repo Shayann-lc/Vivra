@@ -9,8 +9,10 @@ struct InsightsView: View {
     var body: some View {
         NavigationStack {
             List {
+                FeelingOffBlock(model: model)
                 ReportBlock(model: model, kind: .daily)
                 ReportBlock(model: model, kind: .weekly)
+                ReportBlock(model: model, kind: .monthly)
 
                 Section {
                     NavigationLink {
@@ -30,6 +32,36 @@ struct InsightsView: View {
             }
             .navigationTitle("Insights")
             .refreshable { await model.refreshAnalysis() }
+        }
+    }
+}
+
+/// "Why do I feel off today?" Things that stood out, never reasons.
+private struct FeelingOffBlock: View {
+    let model: AppModel
+
+    var body: some View {
+        Section {
+            Button {
+                Task { await model.createReport(.feelingOff) }
+            } label: {
+                if model.creatingReport == .feelingOff {
+                    HStack {
+                        ProgressView()
+                        Text("Looking at today…")
+                    }
+                } else {
+                    Label("Why do I feel off today?", systemImage: "questionmark.bubble")
+                }
+            }
+            .disabled(model.creatingReport != nil)
+        } footer: {
+            Text(Copy.feelingOffNote)
+        }
+        if let report = model.latestReport(.feelingOff),
+            Calendar.autoupdatingCurrent.isDateInToday(report.createdAt)
+        {
+            ReportSection(report: report)
         }
     }
 }
@@ -68,6 +100,8 @@ private struct ReportBlock: View {
         switch kind {
         case .daily: "Check-in"
         case .weekly: "Weekly Summary"
+        case .monthly: "Monthly Summary"
+        case .feelingOff: "Look at Today"
         }
     }
 
@@ -77,6 +111,10 @@ private struct ReportBlock: View {
             "A short look at last night and today next to your usual, plus anything unusual and one pattern to notice."
         case .weekly:
             "A summary of your last 7 days, with patterns and trends from recent weeks."
+        case .monthly:
+            "A deeper look at your last 30 days next to the 30 before, with every pattern and trend Vivra has found."
+        case .feelingOff:
+            "Things in today's data that stood out."
         }
     }
 }
@@ -114,6 +152,8 @@ struct ReportSection: View {
         switch report.kind {
         case .daily: "Check-in · " + report.createdAt.formatted(date: .abbreviated, time: .shortened)
         case .weekly: "Weekly summary · " + Formatting.dayRange(report.periodStart, report.periodEnd)
+        case .monthly: "Monthly summary · " + Formatting.dayRange(report.periodStart, report.periodEnd)
+        case .feelingOff: "Asked " + report.createdAt.formatted(date: .abbreviated, time: .shortened)
         }
     }
 
@@ -121,6 +161,9 @@ struct ReportSection: View {
         switch report.kind {
         case .daily: "There isn't enough recent data for a check-in yet. It needs at least a week of history."
         case .weekly: "There isn't enough data from the last 7 days yet. Summaries need at least 3 days of a metric."
+        case .monthly: "There isn't enough data from the last 30 days yet. Monthly summaries need 10 days of a metric."
+        case .feelingOff:
+            "Today's data looks close to your usual, and no known pattern applies. That's useful to know too."
         }
     }
 

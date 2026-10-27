@@ -58,6 +58,8 @@ targets:
         product: NarrativeCore
       - package: VivraCore
         product: Gamification
+      - package: VivraCore
+        product: Norms
       - package: VivraStore
         product: VivraStore
       - package: HealthSync
@@ -132,5 +134,6 @@ schemes:
         - package: VivraCore/InsightEngineTests
         - package: VivraCore/NarrativeCoreTests
         - package: VivraCore/GamificationTests
+        - package: VivraCore/NormsTests
         - package: VivraStore/VivraStoreTests
         - package: HealthSync/HealthSyncTests

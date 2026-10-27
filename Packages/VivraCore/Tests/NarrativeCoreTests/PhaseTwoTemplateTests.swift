@@ -238,3 +238,120 @@ private let moodComparison = Finding(
         #expect(MetricDescriptions.title(.restingHeartRate) == "Resting heart rate")
     }
 }
+
+@Suite struct PhaseFourTemplateTests {
+    private let correlation = Correlation(
+        x: .caffeine,
+        y: .sleepDuration,
+        lag: 1,
+        rho: -0.52,
+        rhoLow: -0.7,
+        rhoHigh: -0.3,
+        days: 60,
+        pValue: 0.0001,
+        adjustedPValue: 0.001,
+        confidence: .high,
+        split: .thirds,
+        lowGroupMaxX: 60,
+        highGroupMinX: 190,
+        lowGroupMedianY: 7.25 * 3600,
+        highGroupMedianY: 6.6667 * 3600,
+        lowGroupDays: 20,
+        highGroupDays: 20
+    )
+
+    @Test func newKindsPassTheValidator() {
+        var findings: [Finding] = [
+            Finding(
+                id: "applies.caffeine",
+                detail: .applicablePattern(
+                    ApplicablePattern(basis: .correlation(correlation), metric: .caffeine, daysAgo: 1, value: 280))
+            ),
+            Finding(
+                id: "applies.mood",
+                detail: .applicablePattern(
+                    ApplicablePattern(
+                        basis: .correlation(
+                            Correlation(
+                                x: .stressLevel, y: .sleepDuration, lag: 1, rho: -0.4, rhoLow: -0.6, rhoHigh: -0.2,
+                                days: 40,
+                                pValue: 0.01, adjustedPValue: 0.03, confidence: .medium, split: .thirds,
+                                lowGroupMaxX: 2,
+                                highGroupMinX: 4, lowGroupMedianY: 7.5 * 3600, highGroupMedianY: 6.9 * 3600,
+                                lowGroupDays: 14, highGroupDays: 13
+                            )
+                        ),
+                        metric: .stressLevel,
+                        daysAgo: 1,
+                        value: 4
+                    )
+                )
+            ),
+        ]
+        for metric in Metric.allCases {
+            findings.append(
+                Finding(
+                    id: "monthly.\(metric.rawValue)",
+                    detail: .periodAverage(
+                        PeriodAverage(
+                            metric: metric, periodDays: 30, value: 1_234.5, valueDays: 25, previous: 1_100,
+                            previousDays: 28)
+                    )
+                )
+            )
+        }
+        for kind in ReportKind.allCases {
+            #expect(
+                NarrativeValidator.validate(TemplateRenderer.render(findings, kind: kind), findings: findings) == [])
+        }
+    }
+
+    @Test func applicablePatternGolden() {
+        let finding = Finding(
+            id: "applies.caffeine",
+            detail: .applicablePattern(
+                ApplicablePattern(basis: .correlation(correlation), metric: .caffeine, daysAgo: 1, value: 280))
+        )
+        #expect(
+            TemplateRenderer.sentence(for: finding)
+                == "Yesterday you recorded 280 mg of caffeine. In your recent history: on days with 190 mg or more of "
+                + "caffeine, you slept a median of 6h 40m the following night, compared with 7h 15m on days with 60 mg "
+                + "or less of caffeine (60 days compared, high confidence)."
+        )
+    }
+
+    @Test func monthlyGoldenAndHeadlines() {
+        let finding = Finding(
+            id: "monthly.restingHeartRate",
+            detail: .periodAverage(
+                PeriodAverage(
+                    metric: .restingHeartRate, periodDays: 30, value: 58.2, valueDays: 27, previous: 60.4,
+                    previousDays: 29)
+            )
+        )
+        #expect(
+            TemplateRenderer.sentence(for: finding)
+                == "Your resting heart rate averaged 58 bpm over the last 30 days (27 days recorded). In the 30 days before, it averaged 60 bpm."
+        )
+        #expect(TemplateRenderer.headline(for: .feelingOff) == "What stood out today")
+        #expect(TemplateRenderer.emptyHeadline(for: .feelingOff) == "Nothing stood out in today's data")
+        #expect(
+            PromptBuilder.prompt(kind: .feelingOff, findings: [finding], corrections: []).contains(
+                "Never say or suggest"))
+    }
+
+    @Test func rejectsReasonLanguage() {
+        let finding = Finding(
+            id: "monthly.restingHeartRate",
+            detail: .periodAverage(
+                PeriodAverage(
+                    metric: .restingHeartRate, periodDays: 30, value: 58, valueDays: 27, previous: nil, previousDays: 3)
+            )
+        )
+        let draft = NarrativeDraft(
+            headline: "Today",
+            bullets: [.init(findingID: finding.id, text: "Coffee is the reason for your restless night.")]
+        )
+        #expect(NarrativeValidator.validate(draft, findings: [finding]).contains(.causalLanguage("the reason")))
+    }
+}

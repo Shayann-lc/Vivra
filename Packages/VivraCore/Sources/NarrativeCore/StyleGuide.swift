@@ -23,7 +23,8 @@ public enum StyleGuide {
         "results in", "resulted in", "as a result", "result of", "makes you", "made you", "drives",
         "driven by", "triggers", "triggered", "affects", "affected", "impact", "impacts", "improves",
         "improved", "improve", "worsens", "worsened", "boosts", "boosted", "hurts", "harms", "thanks to",
-        "therefore", "which means", "so that",
+        "therefore", "which means", "so that", "the reason", "reason for", "reason why", "explains", "explain why",
+        "because of",
     ]
 
     /// System instructions for every model session.
