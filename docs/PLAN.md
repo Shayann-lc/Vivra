@@ -1,6 +1,6 @@
 # Vivra — Architecture and Phased Plan
 
-Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–2 are done in code, with CI green. The device checks for Phases 1 and 2 (`docs/DEVICE_TEST.md`) are pending with the owner. Phase 3 is waiting for approval.
+Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–2 are done in code, with CI green. The device checks for Phases 1 and 2 (`docs/DEVICE_TEST.md`) are pending with the owner. Phase 3 is approved and in progress.
 
 ## 1. Decisions already made
 
@@ -203,10 +203,49 @@ Every statistic is covered by unit tests with known answers, and every report ty
 5. A daily check-in is produced from the model on an Apple Intelligence device and from templates without one, and both pass the validator.
 6. CI is green. `docs/DEVICE_TEST.md` gains the Phase 2 steps.
 
-### Phase 3 — Gamification (rewards logging, not exercise)
-- XP for logging only, a daily goal (default: one check-in), streaks with earned freezes (one per 7-day streak, up to two held), and achievements for consistency and exploring the app.
-- Gentle local notifications at a time the user chooses, at most once a day, with copy from the style guide. There is no streak-loss alarm.
-- When a streak breaks, the UI shows "Welcome back", never a loss message.
+### Phase 3 — Gamification (rewards logging, not exercise) and a clearer interface
+
+The owner asked for the interface to draw on public reviews of Whoop, Fitbit, Apple Health and Apple Fitness. The findings and the rules they lead to are in `docs/UX_RESEARCH.md`.
+
+**Progress (rewards logging only, never exercise)**
+- A **check-in** is one Quick Log save. The **daily goal** is 1 check-in by default (choose 1–3). The goal history is stored, so changing it never rewrites past days.
+- **Runs**, not "streaks":
+  - Consecutive days that meet the goal.
+  - **Pauses** are earned, one per 7 goal days in a run, and you can hold up to two. A missed day uses a pause automatically, so the run continues.
+  - A run only resets when a day is missed with no pause left.
+  - Today never counts as missed until it's over.
+- **Logging for earlier:** Quick Log can log for earlier today or yesterday. Progress is computed from entry times, so a forgotten day can be filled in (the Apple Fitness lesson, `UX_RESEARCH.md` §5).
+- **XP, for logging only:** 10 for the first check-in of a day, +5 for each other kind logged that day, capped at 30, plus 5 when the daily goal is met. Levels at 0, 50, 150, 300, 500 … XP (level *n* starts at 25·*n*·(*n*−1)).
+- **Achievements:**
+  - Consistency: days logged in total, runs of 7 and 30 days, and coming back after a break.
+  - Exploring: first weekly summary, first check-in report, opening Patterns, answering every Health permission, trying every kind of log, and turning on Health saving.
+- **Everything derived:** all of it is computed from log entries, goal history and an append-only `app_event` log, never stored as counters. That way it can't drift, backfilled logs count, and a future leaderboard could compute XP the same way without a migration (decision 1).
+- **Copy:** "Welcome back" after a break. No loss language anywhere: progress copy is checked against `StyleGuide.bannedTerms` and a list of loss phrases in a test.
+
+**Reminders**
+- Optional and off by default, offered once after your first save.
+- One local notification a day, at a time you choose. It's skipped once today's goal is met.
+- Notifications are scheduled 7 days ahead and rescheduled whenever the app opens, so they stop by themselves after a week without opening the app.
+- No streak warnings, and no health data in notification text.
+
+**Interface** (rules from `UX_RESEARCH.md`)
+- Tabs: **Today**, **Log**, **Insights**, **Progress**. Settings moves to a button in Today's toolbar.
+- **Today**, from top to bottom:
+  - A compact *at a glance* list of the latest values next to *your usual* (28-day median).
+  - A one-line progress strip: today's goal, current run and level.
+  - A Quick Log button.
+  - One *worth noticing* line: the most notable unusual value or pattern, in template text.
+  - The Phase 1–2 cards, which you can show, hide and reorder.
+- **Metric detail:** tap any value to see 28 days as a chart with your usual range (10th–90th percentile) shaded, the number of days, the source, and a plain description of the metric (no interpretation).
+- **Progress tab:** level and XP, today's goal, the current run and pauses, a 7-day strip (missed days drawn neutrally, never red), total days logged, longest run, achievements, and the daily goal setting.
+- After saving, a short confirmation with XP earned and the run. "Welcome back" when returning after a break.
+
+**Definition of done**
+1. The progress engine in VivraCore has scenario tests: runs, earning and using pauses, the cap of two, backfilling, goal changes over time, XP and levels, every achievement, welcome back, and today pending. Tests also check the reminder plan (skip once logged, 7 days ahead) and that all progress and reminder copy passes the style checks.
+2. Schema v4 (`goal_setting`, `app_event`) with repository tests.
+3. Today, metric detail, Progress, the card editor and Quick Log's "when" control are built. App-hosted tests cover saving with a backdated time, goal changes, and recording events.
+4. A device check of a reminder arriving and being skipped after logging, and of the Today screen. Steps are in `docs/DEVICE_TEST.md`.
+5. CI is green.
 
 ### Phase 4 — Deeper reports and reference norms
 - Monthly deep-dive, and on-demand "Why did I feel off today?". The question goes to the engine first (today's anomalies and recent lagged findings), and the model only words the result.
