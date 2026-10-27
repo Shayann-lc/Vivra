@@ -1,6 +1,6 @@
 # Vivra — Architecture and Phased Plan
 
-Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–3 are done in code, with CI green. The device checks for Phases 1–3 (`docs/DEVICE_TEST.md`) are pending with the owner. Phase 4 is approved and in progress.
+Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–4 are done in code. The device checks for Phases 1–4 (`docs/DEVICE_TEST.md`) are pending with the owner. Phase 5 is approved and in progress.
 
 ## 1. Decisions already made
 
@@ -286,7 +286,45 @@ The owner asked for the interface to draw on public reviews of Whoop, Fitbit, Ap
 5. CI is green, and `docs/DEVICE_TEST.md` gains the Phase 4 steps.
 
 ### Phase 5 — Hardening
-- Full export, accessibility (VoiceOver, Dynamic Type), localization groundwork, battery and performance profiling of background sync, App Store privacy labels and HealthKit review notes.
+
+**Full export**
+- Settings › **Export All Data** writes a folder containing:
+  - `vivra-export.json`: every table, in one versioned document;
+  - one CSV per table: samples, sleep, workouts, category events, State of Mind, ECG records, logs, reports, goals, events.
+- The folder is written to a temporary location with Data Protection `complete` and zipped with `NSFileCoordinator`'s `.forUploading` option, so no zip dependency is needed.
+- The zip is handed to the share sheet, and the folder and zip are deleted when the sheet closes.
+- The CSV writer lives in VivraCore, with RFC 4180 quoting tested on Linux.
+
+**Accessibility**
+- No fixed font sizes, so everything scales with Dynamic Type.
+- Decorative images are hidden from VoiceOver.
+- Charts get accessibility labels and summaries, and icon-only controls get labels.
+- A new **UI test target** launches the app in an isolated mode (`-ui-testing`: temporary storage, no HealthKit prompts). It walks through onboarding and every tab, running Xcode's `performAccessibilityAudit()` on each screen in CI.
+
+**Localization groundwork**
+- A String Catalog (`Localizable.xcstrings`) for the app. Fixed interface text goes through `LocalizedStringKey` or `String(localized:)`.
+- Generated report text (templates and the model) stays English in v1. The validator depends on exact number formats, so localizing it means localizing `FindingFormatter` and `StyleGuide` together. That's recorded as future work.
+
+**Battery and sync performance**
+- Signposts (`OSSignposter`, through `VivraLogging`) around each type's sync and each report build, for profiling in Instruments.
+- Raw heart rate is the highest-volume type and doesn't feed any screen, so its background delivery drops to daily.
+- Background deliveries for several types are coalesced into one dashboard refresh.
+- `docs/PERFORMANCE.md` is a device profiling checklist for the owner.
+
+**App Store**
+- `docs/APP_STORE.md` covers:
+  - the privacy nutrition label ("Data Not Collected");
+  - HealthKit usage and review notes (no medical claims, on-device only, how to test);
+  - the age rating and the description disclaimer;
+  - the export-compliance question about SQLCipher, which is the owner's decision.
+
+**Definition of done**
+1. Export: CSV quoting tests (Linux), and an app-hosted test checking that the export contains every table with the right counts, has `complete` protection, and is removed by cleanup.
+2. The UI smoke test with accessibility audits passes in CI for onboarding and all four tabs.
+3. The String Catalog is in place, and fixed interface text is localizable.
+4. Signposts are in place, heart rate delivers daily, background refreshes are coalesced, and the profiling checklist is written.
+5. `docs/APP_STORE.md` and the Phase 5 device steps are written.
+6. CI is green.
 
 ## 8. Strava — what the terms say and my recommendation
 

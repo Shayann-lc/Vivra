@@ -148,6 +148,53 @@ import Testing
         #expect(harness.model.todayLogs.isEmpty)
     }
 
+    @Test func exportWritesEveryTableAndCleanupRemovesIt() async throws {
+        let harness = Self.makeHarness()
+        defer { harness.cleanUp() }
+        await harness.model.start()
+        await harness.model.completeOnboarding()
+        var draft = QuickLogDraft()
+        draft.mood = 4
+        draft.note = "lunch, \"outside\""
+        #expect(await harness.model.saveQuickLog(draft))
+        await harness.model.setGoal(5)
+        await harness.model.createReport(.daily)
+
+        let export = try #require(await harness.model.prepareExport())
+        let fileManager = FileManager.default
+        #expect(export.folder.lastPathComponent == "Vivra Export 2026-03-31")
+        let names = Set(try fileManager.contentsOfDirectory(atPath: export.folder.path))
+        #expect(names.count == 11)
+        #expect(names.contains("vivra-export.json"))
+        #expect(names.contains("logs.csv"))
+
+        let data = try Data(contentsOf: export.folder.appendingPathComponent("vivra-export.json"))
+        let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(json["formatVersion"] as? Int == 1)
+        #expect((json["logs"] as? [Any])?.count == 2)
+        #expect((json["reports"] as? [Any])?.count == 1)
+        #expect((json["goals"] as? [Any])?.count == 1)
+        for key in ["quantitySamples", "sleepIntervals", "workouts", "categoryEvents", "statesOfMind", "ecgRecords"] {
+            #expect((json[key] as? [Any])?.isEmpty == true, "\(key)")
+        }
+        let logsCSV = try String(contentsOf: export.folder.appendingPathComponent("logs.csv"), encoding: .utf8)
+        #expect(logsCSV.contains("\"lunch, \"\"outside\"\"\""))
+
+        let archiveSize = try fileManager.attributesOfItem(atPath: export.archive.path)[.size] as? Int
+        #expect((archiveSize ?? 0) > 0)
+        // The simulator doesn't report Data Protection classes.
+        #if !targetEnvironment(simulator)
+            for url in [export.directory, export.archive, export.folder.appendingPathComponent("vivra-export.json")] {
+                let protection =
+                    try fileManager.attributesOfItem(atPath: url.path)[.protectionKey] as? FileProtectionType
+                #expect(protection == .complete)
+            }
+        #endif
+
+        harness.model.finishExport(export)
+        #expect(!fileManager.fileExists(atPath: export.directory.path))
+    }
+
     @Test func dailyCheckInWithoutDataUsesTheEmptyTemplate() async {
         let harness = Self.makeHarness()
         defer { harness.cleanUp() }

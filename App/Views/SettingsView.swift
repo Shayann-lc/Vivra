@@ -1,8 +1,11 @@
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     let model: AppModel
     @State private var confirmingDelete = false
+    @State private var export: PreparedExport?
+    @State private var exportFailed = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -131,6 +134,31 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                 }
 
+                Section {
+                    Button {
+                        Task {
+                            export = await model.prepareExport()
+                            exportFailed = export == nil
+                        }
+                    } label: {
+                        if model.isExporting {
+                            HStack {
+                                Text("Preparing Export…")
+                                Spacer()
+                                ProgressView()
+                            }
+                        } else {
+                            Text("Export All Data")
+                        }
+                    }
+                    .disabled(model.isExporting)
+                } footer: {
+                    Text(
+                        "Creates a zip of everything Vivra stores, as JSON and CSV files. Once you share it, the copy "
+                            + "isn't encrypted by Vivra, so choose where it goes with care."
+                    )
+                }
+
                 Section("About") {
                     NavigationLink("Not Medical Advice") {
                         ScrollView {
@@ -153,6 +181,17 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .toolbar {
                 Button("Done") { dismiss() }
+            }
+            .sheet(item: $export) { export in
+                ActivityView(items: [export.archive]) { self.export = nil }
+                    .presentationDetents([.medium, .large])
+                    // Runs however the sheet closes, so the files never linger.
+                    .onDisappear { model.finishExport(export) }
+            }
+            .alert("Couldn't Export", isPresented: $exportFailed) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Vivra couldn't prepare the export. Try again in a moment.")
             }
             .confirmationDialog(
                 "Delete all Vivra data?",
@@ -182,4 +221,18 @@ struct SettingsView: View {
         let components = Calendar.autoupdatingCurrent.dateComponents([.hour, .minute], from: date)
         return (components.hour ?? 19) * 60 + (components.minute ?? 0)
     }
+}
+
+/// The system share sheet, with a callback when it closes.
+private struct ActivityView: UIViewControllerRepresentable {
+    let items: [URL]
+    let onComplete: () -> Void
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        controller.completionWithItemsHandler = { _, _, _, _ in onComplete() }
+        return controller
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }

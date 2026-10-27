@@ -308,6 +308,24 @@ public final class HealthRepository: SyncStore, Sendable {
         try await writer.write { db in try record.insert(db) }
     }
 
+    /// Every saved report, oldest first.
+    public func allReports() async throws -> [StoredReport] {
+        try await writer.read { db in
+            try ReportRecord.order(Column("id")).fetchAll(db)
+        }
+        .compactMap { try? $0.model() }
+    }
+
+    public func allSettings() async throws -> [String: String] {
+        try await writer.read { db in
+            var settings: [String: String] = [:]
+            for row in try Row.fetchAll(db, sql: "SELECT key, value FROM setting") {
+                settings[row["key"]] = row["value"]
+            }
+            return settings
+        }
+    }
+
     public func latestReport(kind: ReportKind) async throws -> StoredReport? {
         try await writer.read { db in
             try ReportRecord.filter(Column("kind") == kind.rawValue).order(Column("id").desc).fetchOne(db)

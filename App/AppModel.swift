@@ -136,6 +136,7 @@ final class AppModel {
     private(set) var glance: TodayGlance?
     private(set) var comparisonChoice = ComparisonChoice.none
     private(set) var birthYear: Int?
+    private(set) var isExporting = false
     /// Shown briefly after a Quick Log save.
     var saveMessage: String?
     /// Offer a daily reminder (once, after the first save).
@@ -219,6 +220,8 @@ final class AppModel {
             startTask = nil
             return
         }
+
+        DataExporter.removeLeftovers(in: FileManager.default.temporaryDirectory)
 
         if preferences.onboardingCompleted {
             phase = .ready
@@ -671,6 +674,34 @@ final class AppModel {
         }
         preferences.writeBackEnabled = enabled
         if enabled { await record(.enabledHealthSaving) }
+    }
+
+    // MARK: Export
+
+    /// Writes every table as JSON and CSV into a protected temporary folder
+    /// and zips it. Call `finishExport` once the share sheet closes.
+    func prepareExport() async -> PreparedExport? {
+        guard let repository, !isExporting else { return nil }
+        isExporting = true
+        defer { isExporting = false }
+        let now = environment.clock.now
+        let name = "Vivra Export \(environment.calendar().day(now).description)"
+        let parent = FileManager.default.temporaryDirectory
+        do {
+            let bundle = try await repository.exportAll(at: now)
+            let export = try await Task.detached(priority: .userInitiated) {
+                try DataExporter.write(bundle.files(), name: name, in: parent)
+            }.value
+            Log.app.event("Export prepared")
+            return export
+        } catch {
+            Log.app.failure("Export failed", code: (error as NSError).code)
+            return nil
+        }
+    }
+
+    func finishExport(_ export: PreparedExport) {
+        DataExporter.cleanUp(export)
     }
 
     // MARK: Delete everything
