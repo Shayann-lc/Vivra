@@ -304,6 +304,7 @@ The owner asked for the interface to draw on public reviews of Whoop, Fitbit, Ap
 **Localization groundwork**
 - A String Catalog (`Localizable.xcstrings`) for the app. Fixed interface text goes through `LocalizedStringKey` or `String(localized:)`.
 - Generated report text (templates and the model) stays English in v1. The validator depends on exact number formats, so localizing it means localizing `FindingFormatter` and `StyleGuide` together. That's recorded as future work.
+- The same goes for interface text that comes from VivraCore (`ProgressCopy`, `MetricDescriptions`, formatted values): the style and loss-phrase tests check it in English, so it moves with the report text. The widget extension's few strings are also left for that pass.
 
 **Battery and sync performance**
 - Signposts (`OSSignposter`, through `VivraLogging`) around each type's sync and each report build, for profiling in Instruments.

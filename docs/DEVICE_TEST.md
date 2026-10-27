@@ -198,3 +198,41 @@ These cover the Phase 2 definition-of-done items that CI can't check (PLAN §7, 
    line, then regenerate and run.
 2. **VO2 max** ✅ also shows "The median for … aged … in the FRIEND registry is …", the
    lab-versus-watch caveat, and the citation.
+
+# Phase 5 device steps
+
+## A. Export
+
+1. Settings › **Export All Data**. ✅ The share sheet opens with a zip named
+   "Vivra Export <date>".
+2. Save it to Files and open it. ✅ It contains `vivra-export.json` and ten CSV files.
+   The CSVs open in Numbers with one row per sample or log, and a note containing a
+   comma or quotes stays in one cell.
+3. Cancel the share sheet on a second export. ✅ Nothing named `VivraExport-…` is left
+   in the app's temporary folder. You can check with Xcode › Devices › Download
+   Container.
+4. ✅ Lock the phone with the share sheet open, wait a minute, then unlock. The export
+   files are protected while the phone is locked (Data Protection `complete`), so a
+   share target may have to try again after unlock.
+
+## B. Accessibility
+
+1. Settings › Accessibility › Display & Text Size › Larger Text: set the largest
+   accessibility size. ✅ Every onboarding page scrolls, and its buttons stay visible.
+   Today, Log, Insights, Progress and Settings show no clipped text.
+2. Turn on VoiceOver. ✅ The onboarding symbols are skipped. Charts read as "Sleep by
+   stage over the last 7 days", "Steps over the last 7 days", and so on, and Audio
+   Graphs is available from the rotor. The run calendar reads each day and its
+   status.
+3. ✅ Run Xcode's Accessibility Inspector audit on each tab. The same audit runs in CI
+   (`VivraUITests`).
+
+## C. Performance
+
+Run the checklist in `docs/PERFORMANCE.md`.
+
+## D. Language
+
+1. Edit Scheme › Run › Options › App Language: **Double-Length Pseudolanguage**.
+   ✅ Interface text doubles. Report text and values from VivraCore stay English,
+   as planned for v1 (PLAN Phase 5).
