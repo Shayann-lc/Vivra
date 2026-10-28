@@ -56,15 +56,15 @@ final class VivraUITests: XCTestCase {
                 let createWeekly = app.buttons["Create Weekly Summary"]
                 reveal(createWeekly, in: app)
                 tap(createWeekly, until: weekly, auditing: app, screenshot: nil)
-                // Insights greys out its buttons while a report is being
-                // made, and the new summary fades in. Audit once that's over.
-                let enabled = XCTNSPredicateExpectation(
-                    predicate: NSPredicate(format: "isEnabled == true"),
-                    object: app.buttons.matching(
-                        NSPredicate(format: "label BEGINSWITH 'Create' AND label ENDSWITH 'Weekly Summary'")
-                    )
-                    .firstMatch)
-                XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: timeout), .completed, "Insights buttons enabled")
+                // Insights greys out its buttons and shows "Writing…" while a
+                // report is being made, and the new summary fades in. Audit
+                // once that's over. (The summary can push the button itself
+                // off screen, so it's the progress label that's watched.)
+                let writing = app.descendants(matching: .any)
+                    .matching(NSPredicate(format: "label CONTAINS 'Writing'")).firstMatch
+                let finished = XCTNSPredicateExpectation(
+                    predicate: NSPredicate(format: "exists == false"), object: writing)
+                XCTAssertEqual(XCTWaiter.wait(for: [finished], timeout: timeout), .completed, "Weekly summary written")
                 _ = XCTWaiter.wait(
                     for: [XCTestExpectation(description: "Let the summary finish appearing")], timeout: 2)
                 audit(app, screenshot: "07b Weekly summary")
@@ -136,18 +136,29 @@ final class VivraUITests: XCTestCase {
         // status bar and a collapsed (inline) navigation bar, and just below
         // it. A large-title bar isn't counted, so nothing on an unscrolled
         // screen is skipped.
+        // Without a bottom tab bar (the floating side bar on wide iPhones),
+        // the fade is at the screen's bottom edge, which also takes in rows
+        // the list has made just below the screen.
+        let window = app.windows.firstMatch.frame
+        let bottomEdge =
+            tabBarFrame.isNull && !window.isEmpty
+            ? CGRect(
+                x: -10_000, y: window.maxY - Self.scrollEdgeEffectHeight, width: 20_000,
+                height: 10_000 + Self.scrollEdgeEffectHeight)
+            : .null
         let navigationBar = app.navigationBars.firstMatch
         let fadedBars =
             navigationBar.exists && navigationBar.frame.height < Self.inlineNavigationBarMaxHeight
             ? [
                 tabBarFrame,
+                bottomEdge,
                 // Everything above the bar's bottom edge plus the fade,
                 // including content scrolled off the top of the screen.
                 CGRect(
                     x: -10_000, y: -10_000, width: 20_000,
                     height: 10_000 + navigationBar.frame.maxY + Self.scrollEdgeEffectHeight),
             ]
-            : [tabBarFrame]
+            : [tabBarFrame, bottomEdge]
         // A screen that's still updating can make the audit time out (code
         // -56). Give it a moment and try once more before failing.
         for attempt in 1...2 {
