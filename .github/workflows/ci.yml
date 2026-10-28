@@ -34,15 +34,29 @@ jobs:
         run: swift test --package-path Packages/VivraCore
 
   ios:
-    name: Build and test (iOS Simulator)
-    runs-on: macos-26
+    # Xcode 26 is the oldest toolchain Vivra supports; Xcode 27 matches what
+    # the owner builds with locally and is needed for iOS 27 devices.
+    name: Build and test (iOS Simulator, ${{ matrix.xcode }})
+    runs-on: ${{ matrix.runner }}
     needs: checks
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - xcode: Xcode 26
+            runner: macos-26
+            artifact: xcode-26
+          - xcode: Xcode 27
+            runner: xcode-27
+            artifact: xcode-27
     steps:
       - uses: actions/checkout@v5
 
-      - name: Show Xcode version
-        run: xcodebuild -version
+      - name: Show Xcode and macOS versions
+        run: |
+          xcodebuild -version
+          sw_vers
 
       - name: Install XcodeGen
         run: |
@@ -86,7 +100,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: screenshots
+          name: screenshots-${{ matrix.artifact }}
           path: ${{ runner.temp }}/screenshots
           if-no-files-found: ignore
           retention-days: 14
@@ -95,6 +109,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: Vivra.xcresult
+          name: Vivra-${{ matrix.artifact }}.xcresult
           path: ${{ runner.temp }}/Vivra.xcresult
           retention-days: 7
