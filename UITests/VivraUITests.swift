@@ -51,13 +51,17 @@ final class VivraUITests: XCTestCase {
             case "Insights":
                 let weekly = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Weekly summary'"))
                     .firstMatch
-                tap(app.buttons["Create Weekly Summary"], until: weekly, auditing: app, screenshot: nil)
+                // Today's automatic check-in sits above it, so on short
+                // screens the button starts below the fold.
+                let createWeekly = app.buttons["Create Weekly Summary"]
+                reveal(createWeekly, in: app)
+                tap(createWeekly, until: weekly, auditing: app, screenshot: nil)
                 // Insights greys out its buttons while a report is being
                 // made, and the new summary fades in. Audit once that's over.
                 let enabled = XCTNSPredicateExpectation(
                     predicate: NSPredicate(format: "isEnabled == true"),
                     object: app.buttons.matching(
-                        NSPredicate(format: "label BEGINSWITH 'Create' AND label ENDSWITH 'Check-in'")
+                        NSPredicate(format: "label BEGINSWITH 'Create' AND label ENDSWITH 'Weekly Summary'")
                     )
                     .firstMatch)
                 XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: timeout), .completed, "Insights buttons enabled")
@@ -72,6 +76,14 @@ final class VivraUITests: XCTestCase {
         todayTab.tap()
         tap(app.buttons["Settings"], until: app.navigationBars["Settings"], auditing: app, screenshot: nil)
         audit(app, screenshot: "09 Settings")
+    }
+
+    /// Scrolls until `element` is on screen. Lists only create rows near the
+    /// visible area, so an element further down doesn't exist until then.
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<6 where !(element.exists && element.isHittable) {
+            app.swipeUp()
+        }
     }
 
     /// A tab's button wherever the system puts the tabs: a bottom tab bar on
