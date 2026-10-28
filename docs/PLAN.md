@@ -1,6 +1,6 @@
 # Vivra — Architecture and Phased Plan
 
-Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–5 are done in code, with CI green. The device checks for Phases 1–5 (`docs/DEVICE_TEST.md`) and the App Store decisions (`docs/APP_STORE.md`) are pending with the owner.
+Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–5 are done in code, with CI green. Phase 6 (daily summary widget and AI evals) is proposed and waiting for approval. The device checks for Phases 1–5 (`docs/DEVICE_TEST.md`) and the App Store decisions (`docs/APP_STORE.md`) are pending with the owner.
 
 ## 1. Decisions already made
 
@@ -328,6 +328,100 @@ The owner asked for the interface to draw on public reviews of Whoop, Fitbit, Ap
 4. Signposts are in place, heart rate delivers daily, background refreshes are coalesced, and the profiling checklist is written.
 5. `docs/APP_STORE.md` and the Phase 5 device steps are written.
 6. CI is green.
+
+### Phase 6 — Daily summary widget and AI evals (proposed)
+
+Status: **proposed, waiting for the owner's approval.** The owner asked for both
+features and chose these options at kickoff: the widget shows the headline and a
+summary; the check-in is made automatically each day; evals run in CI and live on
+the owner's Mac.
+
+**Change to decision 9.** One new widget may show today's check-in text. The Quick
+Log widget, control and Shortcut stay as they are. This is the first time any
+health-derived text leaves the encrypted database, so the rules below keep it as
+small and short-lived as possible.
+
+**Daily Summary widget**
+- Shows today's check-in headline and its first one or two sentences, exactly as
+  validated (model or template). It never shows raw values or anything else.
+- Sizes: medium on the Home Screen, and rectangular on the Lock Screen (headline
+  only). The text is marked `privacySensitive`, so it's redacted while the phone is
+  locked.
+- If there's no check-in for today yet, it says "Open Vivra for today's check-in"
+  and shows nothing older. Tapping it opens Insights.
+- **How the widget gets the text:**
+  - The app writes one small file, `widget-summary.json` (day, headline, up to two
+    sentences, generator), to a new App Group container shared with the widget.
+  - The file uses Data Protection `completeUntilFirstUserAuthentication`, because
+    widgets render while the phone is locked. The encrypted database is unchanged.
+  - The app only writes the file while a Daily Summary widget is installed (checked
+    with `WidgetCenter`), and deletes it when none is installed.
+  - Delete Everything also deletes it.
+- New entitlement: App Groups (`group.$(VIVRA_BUNDLE_ID)`) on the app and the widget
+  extension. No database access or Keychain sharing for the extension.
+
+**Automatic daily check-in**
+- The first time the app becomes active each day, Vivra makes the daily check-in if
+  there isn't one yet. It uses Apple Intelligence when available and the templates
+  otherwise, exactly like the button.
+- A background refresh task (`BGAppRefreshTask`) tries the same thing once a day.
+  It's skipped quietly if the device is locked (the database needs an unlocked
+  device) or the model isn't ready.
+- A new check-in, whether automatic or made with the button, updates the widget
+  file and reloads the widget.
+
+**AI evals.** Every AI-written text in the app goes through `SummaryComposer`: the
+daily check-in, the weekly and monthly summaries, and "Why do I feel off today?".
+Pattern lists and the Today screen use templates only.
+- **`NarrativeEvals`** (a new VivraCore module, tested on Linux):
+  - **A fixed set of at least 40 cases** covering all four report kinds. Each case is
+    a set of findings built by the insight engine from seeded datasets. The set
+    includes empty days, a single finding, many findings, every finding type, rises
+    and falls, extreme values and a pattern that applies today.
+  - **Deterministic scorers for each output:**
+    - passes the validator: numbers grounded, no banned or causal language;
+    - one sentence per finding, in order, with no extra or missing findings;
+    - no numbers in the headline;
+    - the key value of each finding appears in its sentence;
+    - the direction matches the finding (a rise isn't described as a fall);
+    - length limits for the app and the widget (headline plus two sentences);
+    - addressed to "you".
+  - **A report type** with per-case results, overall rates and thresholds.
+- **CI (every push):**
+  - The template renderer must score 100% on every case.
+  - Recorded model outputs, committed under `evals/recorded/`, are re-scored, so a
+    change to the prompt, validator or scorers that breaks them fails CI.
+  - Each scorer has a test showing it catches a deliberately bad output.
+- **Live runner on the owner's Mac:**
+  - `swift run --package-path Packages/Narrative vivra-evals` sends every case to the
+    on-device model through the real `SummaryComposer`, several times each.
+  - It needs macOS 26 or later with Apple Intelligence on.
+  - It writes a JSON results file and a Markdown report: rates, failures, and each
+    output next to its template, for reading.
+  - It exits with an error if a threshold is missed. Thresholds:
+    - first-attempt validator pass rate of at least 90%;
+    - 100% of shown summaries pass all scorers (after the retry and template
+      fallback);
+    - fallback rate reported.
+  - Its outputs can be committed to `evals/recorded/` for CI.
+
+**Definition of done**
+1. **Widget:** the Daily Summary widget (medium and Lock Screen) shows today's
+   headline and up to two sentences. It is redacted when locked, prompts when
+   there's no check-in for today, and opens Insights.
+2. **Widget file:** app-hosted tests check that the file is written only while the
+   widget is installed (injected check), has the right contents and protection (on
+   device), and is removed by Delete Everything and when the widget is removed.
+3. **Automatic check-in:** the daily check-in is made once a day on first open
+   (app test with a fixed clock), and the background task is registered.
+4. **Docs:** PLAN decision 9 is amended, and the privacy policy, App Store notes and
+   Phase 6 device steps are updated.
+5. **Evals in CI:** `NarrativeEvals` has at least 40 cases and the deterministic
+   scorers, each with a test that catches a bad output. Templates score 100% in CI,
+   and recorded outputs are re-scored.
+6. **Live evals:** the live runner builds in CI, runs on the owner's Mac, and writes
+   the JSON and Markdown report with the thresholds above.
+7. **CI:** green on Xcode 26 and Xcode 27.
 
 ## 8. Strava — what the terms say and my recommendation
 
