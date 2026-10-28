@@ -87,8 +87,13 @@ struct OnboardingView: View {
             }
 
         case .finish:
-            Button("Go to Dashboard") { Task { await model.completeOnboarding() } }
-                .buttonStyle(.borderedProminent)
+            Button("Go to Dashboard") {
+                Task {
+                    await model.completeOnboarding()
+                    await model.ensureDailyCheckIn()
+                }
+            }
+            .buttonStyle(.borderedProminent)
         }
     }
 

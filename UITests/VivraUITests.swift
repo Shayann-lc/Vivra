@@ -55,7 +55,11 @@ final class VivraUITests: XCTestCase {
                 // Insights greys out its buttons while a report is being
                 // made, and the new summary fades in. Audit once that's over.
                 let enabled = XCTNSPredicateExpectation(
-                    predicate: NSPredicate(format: "isEnabled == true"), object: app.buttons["Create Check-in"])
+                    predicate: NSPredicate(format: "isEnabled == true"),
+                    object: app.buttons.matching(
+                        NSPredicate(format: "label BEGINSWITH 'Create' AND label ENDSWITH 'Check-in'")
+                    )
+                    .firstMatch)
                 XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: timeout), .completed, "Insights buttons enabled")
                 _ = XCTWaiter.wait(
                     for: [XCTestExpectation(description: "Let the summary finish appearing")], timeout: 2)

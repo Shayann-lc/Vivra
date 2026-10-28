@@ -236,3 +236,39 @@ Run the checklist in `docs/PERFORMANCE.md`.
 1. Edit Scheme › Run › Options › App Language: **Double-Length Pseudolanguage**.
    ✅ Interface text doubles. Report text and values from VivraCore stay English,
    as planned for v1 (PLAN Phase 5).
+
+# Phase 6 device steps
+
+## A. Daily Summary widget
+
+1. Long-press the Home Screen, choose **+**, then **Vivra › Daily Summary**
+   (medium). Add the Lock Screen version (rectangular) too.
+2. Open Vivra. ✅ Within a few seconds, both widgets show today's check-in
+   headline. The medium one also shows the first two sentences, matching
+   Insights › Check-in.
+3. Lock the phone. ✅ The Lock Screen widget's text is redacted.
+4. Tap the Home Screen widget. ✅ Vivra opens on Insights.
+5. The next day, before opening Vivra: ✅ the widget says "Open Vivra for today's
+   check-in" and shows nothing from yesterday.
+6. Remove the widget, then open Vivra. ✅ In Xcode › Devices, Download Container
+   shows no `widget-summary.json` in the App Group.
+7. Settings › Delete All Vivra Data with the widget installed. ✅ The widget
+   shows "Open Vivra for today's check-in".
+
+## B. Automatic check-in
+
+1. On a new day, open Vivra. ✅ Insights › Check-in already has today's check-in,
+   and the button reads "Create a New Check-in".
+2. Leave the phone unlocked on Wi-Fi for a few hours without opening Vivra. ✅
+   The widget may update on its own; iOS decides when background tasks run, so
+   this can take a while.
+
+## C. Evals on the Mac
+
+1. On a Mac with Apple Intelligence on, from the repository root, run
+   `swift run --package-path Packages/Narrative vivra-evals`.
+2. ✅ It prints the pass rates and writes `evals/results/evals-<time>.md`.
+   Read through the side-by-side sentences.
+3. If it passes, run it again with `--record` and commit the file in
+   `evals/recorded/`, so CI keeps those outputs passing.
+

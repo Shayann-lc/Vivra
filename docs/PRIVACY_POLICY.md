@@ -58,6 +58,18 @@ by the developer, because there isn't one.
 You can turn on **App Lock** in Settings to require Face ID or your passcode to open
 Vivra.
 
+## The Daily Summary widget
+
+If you add Vivra's Daily Summary widget, the app saves a small copy of that day's
+check-in. The copy holds the headline and its first two sentences, and the widget
+shows it on your Home Screen or Lock Screen.
+
+- The copy is kept on your iPhone, in a space only Vivra and its widget can read.
+  It's protected until you first unlock your iPhone after a restart.
+- The text is hidden while your iPhone is locked.
+- Vivra deletes the copy when you remove the widget and when you delete all
+  Vivra data. Older days are never shown.
+
 ## Summaries and Apple Intelligence
 
 Vivra's statistics are all calculated on your iPhone. On devices with Apple
@@ -88,6 +100,12 @@ when the share sheet closes.
 Settings › **Delete All Vivra Data** deletes Vivra's database, its encryption key and
 its settings from your iPhone. Deleting the app has the same effect. Anything you
 chose to save to Apple Health stays there until you delete it in the Health app.
+
+## Background updates
+
+Once a day, iOS may let Vivra run briefly in the background to make that day's
+check-in, so the widget is up to date. This happens only on your iPhone, and only
+while it's unlocked.
 
 ## Notifications
 

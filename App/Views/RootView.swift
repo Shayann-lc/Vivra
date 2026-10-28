@@ -17,6 +17,7 @@ struct RootView: View {
             .task { await model.start() }
             .onOpenURL { url in
                 if url == QuickLogLink.url { model.quickLogRequested = true }
+                if url == InsightsLink.url { model.insightsRequested = true }
             }
             .onChange(of: scenePhase) { _, phase in
                 switch phase {
@@ -27,6 +28,7 @@ struct RootView: View {
                     Task {
                         await model.start()
                         await model.sync()
+                        await model.ensureDailyCheckIn()
                     }
                 default:
                     break
@@ -87,6 +89,12 @@ struct MainTabView: View {
             if requested {
                 selection = .log
                 model.quickLogRequested = false
+            }
+        }
+        .onChange(of: model.insightsRequested, initial: true) { _, requested in
+            if requested {
+                selection = .insights
+                model.insightsRequested = false
             }
         }
         .overlay(alignment: .top) {

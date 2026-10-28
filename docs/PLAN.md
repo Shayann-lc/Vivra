@@ -1,6 +1,6 @@
 # Vivra — Architecture and Phased Plan
 
-Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–5 are done in code, with CI green. Phase 6 (daily summary widget and AI evals) is proposed and waiting for approval. The device checks for Phases 1–5 (`docs/DEVICE_TEST.md`) and the App Store decisions (`docs/APP_STORE.md`) are pending with the owner.
+Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–5 are done in code, with CI green. Phase 6 (daily summary widget and AI evals) is approved and in progress. The device checks for Phases 1–5 (`docs/DEVICE_TEST.md`) and the App Store decisions (`docs/APP_STORE.md`) are pending with the owner.
 
 ## 1. Decisions already made
 
@@ -15,7 +15,7 @@ Status: **approved** (all of §11, with bundle ID and team as placeholders until
 | 7 | Writing back to HealthKit | Opt-in write of mood (State of Mind) and drinks (water, caffeine, alcohol), Phase 2. |
 | 8 | Workout routes | **Not read or stored** in Phase 2 (owner, Phase 2 kickoff). GPS traces are the most sensitive data Vivra could hold, and nothing uses them yet. Revisit with a feature that needs them. |
 | 10 | VO2 max norms | **Every build:** Vivra points to Apple Health's Cardio Fitness levels (FRIEND-based) and ships no VO2 max table. **The owner's own non-commercial build** (`VIVRA_NONCOMMERCIAL`) also shows FRIEND 2015 treadmill medians, with citation (owner, Phase 4 kickoff). Licensing details are in `docs/NORMS.md`. |
-| 9 | Quick-log entry points | Widgets, controls and Shortcuts **open the app** at the Quick Log screen (owner, Phase 2 kickoff). The extension has no database access, no App Group and no shared Keychain item. |
+| 9 | Quick-log entry points | Widgets, controls and Shortcuts **open the app** at the Quick Log screen (owner, Phase 2 kickoff). **Amended in Phase 6** (owner): the Daily Summary widget shows today's check-in headline and first two sentences, from a file the app writes to an App Group container only while that widget is installed. The extension still has no database access and no shared Keychain item. |
 
 ## 2. Principles, restated as engineering rules
 
@@ -329,9 +329,9 @@ The owner asked for the interface to draw on public reviews of Whoop, Fitbit, Ap
 5. `docs/APP_STORE.md` and the Phase 5 device steps are written.
 6. CI is green.
 
-### Phase 6 — Daily summary widget and AI evals (proposed)
+### Phase 6 — Daily summary widget and AI evals
 
-Status: **proposed, waiting for the owner's approval.** The owner asked for both
+Status: **approved and in progress** (owner, Phase 6 kickoff). The owner asked for both
 features and chose these options at kickoff: the widget shows the headline and a
 summary; the check-in is made automatically each day; evals run in CI and live on
 the owner's Mac.

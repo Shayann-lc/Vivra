@@ -22,6 +22,9 @@ struct AppEnvironment {
     /// Fills a fresh store with made-up data (`SampleData`). Debug builds
     /// only, for UI tests and screenshots.
     var loadsSampleData = false
+    /// Writes the Daily Summary widget's file. Nil where there's no widget
+    /// (tests that don't need it, UI tests).
+    var widgetSummary: WidgetSummaryPublisher?
 
     static var live: AppEnvironment {
         AppEnvironment(
@@ -32,7 +35,8 @@ struct AppEnvironment {
             calendar: { DayCalendar(Calendar.autoupdatingCurrent) },
             makeNarrator: { FoundationModelsNarrator.isAvailable ? FoundationModelsNarrator() : nil },
             ownBundleIdentifier: Bundle.main.bundleIdentifier,
-            reminders: NotificationReminderScheduler()
+            reminders: NotificationReminderScheduler(),
+            widgetSummary: .live
         )
     }
 }
@@ -46,7 +50,8 @@ extension AppEnvironment {
         now: Date,
         timeZoneIdentifier: String = "UTC",
         reminders: (any ReminderScheduling)? = nil,
-        sampleData: Bool = false
+        sampleData: Bool = false,
+        widgetSummary: WidgetSummaryPublisher? = nil
     ) -> AppEnvironment {
         let calendar = DayCalendar(timeZone: TimeZone(identifier: timeZoneIdentifier) ?? .gmt)
         return AppEnvironment(
@@ -58,7 +63,8 @@ extension AppEnvironment {
             makeNarrator: { nil },
             ownBundleIdentifier: "app.vivra.isolated",
             reminders: reminders,
-            loadsSampleData: sampleData
+            loadsSampleData: sampleData,
+            widgetSummary: widgetSummary
         )
     }
 }

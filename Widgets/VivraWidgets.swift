@@ -2,12 +2,15 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
-/// Widgets and controls only open the app at Quick Log. They show no health
-/// data and have no access to Vivra's database (PLAN decision 9).
+/// The Quick Log widget and control only open the app and show no data.
+/// The Daily Summary widget shows today's check-in text from a file the app
+/// writes (PLAN decision 9, amended in Phase 6). No widget has access to
+/// Vivra's database.
 @main
 struct VivraWidgets: WidgetBundle {
     var body: some Widget {
         QuickLogWidget()
+        DailySummaryWidget()
         QuickLogControl()
     }
 }

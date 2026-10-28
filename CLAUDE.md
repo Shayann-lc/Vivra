@@ -5,10 +5,11 @@ and the definition of done for each phase.
 
 ## Current phase
 
-**Phases 0–5 are done in code** (PLAN §7). The device checks in
-`docs/DEVICE_TEST.md` and the decisions in `docs/APP_STORE.md` are with the
-owner. Nothing is planned after Phase 5: anything new needs the owner's
-approval and a definition of done first.
+**Phase 6** (Daily Summary widget, automatic daily check-in, AI evals) is
+approved and in progress; its definition of done is in PLAN §7. Phases 0–5 are
+done. The device checks in `docs/DEVICE_TEST.md` and the decisions in
+`docs/APP_STORE.md` are with the owner. Anything beyond Phase 6 needs the
+owner's approval and a definition of done first.
 
 ## Hard rules
 
@@ -29,8 +30,11 @@ approval and a definition of done first.
 - **Never edit `Vendor/GRDB/GRDB` or `Vendor/GRDB/Sources` by hand.** Use
   `scripts/vendor-grdb.sh`.
 - **Never edit a shipped migration.** Always add a new one.
-- **Widgets and controls only open the app.** They get no App Group, no
-  database access and no health data (PLAN decision 9).
+- **Widgets and controls only open the app**, with one exception: the Daily
+  Summary widget shows today's check-in headline and first two sentences from a
+  file the app writes to the App Group while the widget is installed (PLAN
+  decision 9, amended in Phase 6). No widget gets database access, health data
+  beyond that text, or a shared Keychain item.
 - **Workout routes aren't read or stored** (PLAN decision 8).
 - **Interface rules** (`docs/UX_RESEARCH.md`): numbers first and compact; no
   generated text on Today; every value shown next to the person's usual; no

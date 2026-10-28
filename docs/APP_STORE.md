@@ -119,6 +119,17 @@ and "qualifies for an exemption: Yes". `ITSAppUsesNonExemptEncryption = NO` is s
 environment which crypto provider SQLCipher.swift 4.19.0 links on Apple platforms
 (CommonCrypto or its own); check Zetetic's notes for that version if anyone asks.
 
+## 5a. Phase 6 capabilities
+
+- **App Groups:** `group.<bundle id>` on the app and the widget extension. It is
+  used only for the Daily Summary widget's file. Enable App Groups on both App IDs
+  when signing; Xcode's automatic signing does this.
+- **Background fetch:** `UIBackgroundModes` includes `fetch`, and the
+  `app.vivra.dailycheckin` task is listed in `BGTaskSchedulerPermittedIdentifiers`.
+  Its purpose: make the day's check-in for the widget.
+- **Privacy label:** still "Data Not Collected". The widget's text stays on the
+  device.
+
 ## 6. Before the first submission
 
 - [ ] Real bundle ID, team and widget App ID in `Config/Local.xcconfig`.

@@ -143,6 +143,8 @@ final class AppModel {
     var offerReminder = false
     /// Set when a widget, control or shortcut asks for Quick Log.
     var quickLogRequested = false
+    /// Set when the Daily Summary widget is tapped; the tab view opens Insights.
+    var insightsRequested = false
 
     let preferences: Preferences
     let lock: AppLock
@@ -436,7 +438,9 @@ final class AppModel {
 
     func latestReport(_ kind: ReportKind) -> StoredReport? { latestReports[kind] }
 
-    func createReport(_ kind: ReportKind) async {
+    /// `automatic` is for the daily check-in Vivra makes on its own: it
+    /// doesn't count as the person exploring Insights.
+    func createReport(_ kind: ReportKind, automatic: Bool = false) async {
         guard let repository, creatingReport == nil else { return }
         creatingReport = kind
         defer { creatingReport = nil }
@@ -468,6 +472,8 @@ final class AppModel {
             )
             try await repository.saveReport(stored)
             latestReports[kind] = stored
+            if kind == .daily { await publishWidgetSummary() }
+            guard !automatic else { return }
             switch kind {
             case .weekly: await record(.createdWeeklySummary)
             case .daily: await record(.createdCheckIn)
@@ -476,6 +482,50 @@ final class AppModel {
         } catch {
             Log.app.failure("Report failed", code: (error as NSError).code)
         }
+    }
+
+    // MARK: Daily check-in and widget
+
+    /// Makes today's check-in if there isn't one yet, so Insights and the
+    /// Daily Summary widget have it (PLAN Phase 6). Runs when the app
+    /// becomes active and from the background task.
+    func ensureDailyCheckIn() async {
+        guard phase == .ready else { return }
+        let today = environment.calendar().day(environment.clock.now)
+        if latestReports[.daily]?.periodEnd == today {
+            await publishWidgetSummary()
+        } else {
+            await createReport(.daily, automatic: true)
+        }
+    }
+
+    /// Writes today's check-in for the widget, or removes the file when
+    /// there's none for today or no widget is installed.
+    func publishWidgetSummary() async {
+        guard let publisher = environment.widgetSummary else { return }
+        let today = environment.calendar().day(environment.clock.now)
+        guard let daily = latestReports[.daily], daily.periodEnd == today else {
+            await publisher.publish(nil)
+            return
+        }
+        let draft = daily.summary.draft
+        await publisher.publish(
+            WidgetSummary(
+                day: today.description,
+                headline: draft.headline,
+                sentences: WidgetText.sentences(from: draft),
+                writtenByModel: daily.summary.generator == .onDeviceModel
+            )
+        )
+    }
+
+    /// The background refresh: opens the store (only possible while the
+    /// device is unlocked), syncs and makes today's check-in.
+    func runBackgroundCheckIn() async {
+        await start()
+        guard phase == .ready else { return }
+        await sync()
+        await ensureDailyCheckIn()
     }
 
     // MARK: Reference comparisons
@@ -771,6 +821,7 @@ final class AppModel {
     func deleteAllData() async -> DeletionReport {
         await environment.health?.stopObserving()
         await environment.reminders?.replace(with: [])
+        environment.widgetSummary?.remove()
         syncEngine = nil
         repository = nil
         if let database {
