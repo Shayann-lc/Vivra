@@ -48,8 +48,10 @@ public struct SampleData: Sendable {
             // The night that ends this morning.
             let asleepHours = 7.0 + random.normal() * 0.7 + (workedOutYesterday ? 0.4 : 0) + (weekend ? 0.5 : 0)
             let bedtime = at(day, hours: -1.0 + random.normal() * 0.5)
-            sleep += night(from: bedtime, asleepHours: asleepHours, random: &random)
-                .filter { $0.end <= now }
+            // A watch saves the night after waking, so a night still in
+            // progress at `now` isn't included at all.
+            let intervals = night(from: bedtime, asleepHours: asleepHours, random: &random)
+            if let end = intervals.last?.end, end <= now { sleep += intervals }
 
             add(
                 .restingHeartRate, (58 - (asleepHours - 7) * 1.5 + random.normal() * 1.5).rounded(),

@@ -47,6 +47,20 @@ import VivraModel
         #expect(!(data.batches.first { $0.type == .workouts }?.batch.workouts.isEmpty ?? true))
     }
 
+    /// Just after midnight, tonight's sleep is still in progress, so the
+    /// latest night is the previous one rather than a partial night.
+    @Test func leavesOutANightStillInProgress() throws {
+        let justAfterMidnight = Date(timeIntervalSince1970: 1_793_061_000)  // 27 Oct 2026, 00:30 London
+        let data = SampleData.generate(now: justAfterMidnight, calendar: calendar)
+        let sleep = try #require(data.batches.first { $0.type == .sleep }?.batch.sleepIntervals)
+        let byNight = Dictionary(grouping: sleep.filter(\.stage.isAsleep)) { morning(of: $0) }
+        #expect(byNight.count == 89)
+        for (_, intervals) in byNight {
+            let hours = intervals.reduce(0) { $0 + $1.end.timeIntervalSince($1.start) } / 3600
+            #expect(hours >= 4)
+        }
+    }
+
     @Test func eachNightAddsUpToItsAsleepTimeWithoutOverlaps() throws {
         let data = SampleData.generate(now: now, calendar: calendar)
         let sleep = try #require(data.batches.first { $0.type == .sleep }?.batch.sleepIntervals)

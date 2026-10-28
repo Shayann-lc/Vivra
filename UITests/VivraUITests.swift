@@ -31,11 +31,11 @@ final class VivraUITests: XCTestCase {
             notNow.tap()
             _ = goToDashboard.waitForExistence(timeout: 2)
         }
-        let todayTab = app.tabBars.buttons["Today"]
+        let todayTab = tabButton("Today", in: app)
         tap(goToDashboard, until: todayTab, auditing: app, screenshot: "04 All set")
 
         for (number, tab) in [("05", "Today"), ("06", "Log"), ("07", "Insights"), ("08", "Progress")] {
-            let button = app.tabBars.buttons[tab]
+            let button = tabButton(tab, in: app)
             XCTAssertTrue(button.waitForExistence(timeout: timeout), "\(tab) tab")
             for _ in 1...3 where !button.isSelected {
                 button.tap()
@@ -68,6 +68,13 @@ final class VivraUITests: XCTestCase {
         todayTab.tap()
         tap(app.buttons["Settings"], until: app.navigationBars["Settings"], auditing: app, screenshot: nil)
         audit(app, screenshot: "09 Settings")
+    }
+
+    /// A tab's button wherever the system puts the tabs: a bottom tab bar on
+    /// most iPhones, or a floating side bar on wide ones (iOS 27), which
+    /// isn't reported as a tab bar.
+    private func tabButton(_ name: String, in app: XCUIApplication) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch
     }
 
     /// Audits the current screen, then taps the element until `next`
