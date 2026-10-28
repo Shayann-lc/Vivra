@@ -51,7 +51,7 @@ public enum NarrativeViolation: Sendable, Equatable, CustomStringConvertible {
 
 public enum NarrativeValidator {
     /// Report windows (7, 28, 30 and 90 days) may always be mentioned.
-    static let alwaysAllowedNumbers: Set<String> = ["7", "28", "30", "90"]
+    public static let alwaysAllowedNumbers: Set<String> = ["7", "28", "30", "90"]
 
     public static func validate(_ draft: NarrativeDraft, findings: [Finding]) -> [NarrativeViolation] {
         var violations: [NarrativeViolation] = []

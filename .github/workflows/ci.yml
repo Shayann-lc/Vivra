@@ -69,6 +69,9 @@ jobs:
       - name: Generate project
         run: xcodegen generate
 
+      - name: Build the live eval runner (runs on a Mac with Apple Intelligence)
+        run: swift build --package-path Packages/Narrative --product vivra-evals
+
       - name: Build and test
         run: |
           destination="$(scripts/sim-destination.sh)"

@@ -12,7 +12,10 @@ let package = Package(
         .macOS(.v26),
     ],
     products: [
-        .library(name: "Narrative", targets: ["Narrative"])
+        .library(name: "Narrative", targets: ["Narrative"]),
+        // Live evals of the on-device model on a Mac with Apple Intelligence
+        // (PLAN Phase 6): swift run --package-path Packages/Narrative vivra-evals
+        .executable(name: "vivra-evals", targets: ["VivraEvals"]),
     ],
     dependencies: [
         .package(path: "../VivraCore")
@@ -24,7 +27,15 @@ let package = Package(
                 .product(name: "NarrativeCore", package: "VivraCore"),
                 .product(name: "InsightEngine", package: "VivraCore"),
             ]
-        )
+        ),
+        .executableTarget(
+            name: "VivraEvals",
+            dependencies: [
+                "Narrative",
+                .product(name: "NarrativeEvals", package: "VivraCore"),
+                .product(name: "NarrativeCore", package: "VivraCore"),
+            ]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

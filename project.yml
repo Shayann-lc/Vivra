@@ -156,5 +156,6 @@ schemes:
         - package: VivraCore/NarrativeCoreTests
         - package: VivraCore/GamificationTests
         - package: VivraCore/NormsTests
+        - package: VivraCore/NarrativeEvalsTests
         - package: VivraStore/VivraStoreTests
         - package: HealthSync/HealthSyncTests

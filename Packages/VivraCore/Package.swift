@@ -19,6 +19,7 @@ let package = Package(
         .library(name: "NarrativeCore", targets: ["NarrativeCore"]),
         .library(name: "Gamification", targets: ["Gamification"]),
         .library(name: "Norms", targets: ["Norms"]),
+        .library(name: "NarrativeEvals", targets: ["NarrativeEvals"]),
     ],
     targets: [
         .target(name: "VivraLogging"),
@@ -28,6 +29,11 @@ let package = Package(
         .target(name: "NarrativeCore", dependencies: ["InsightEngine", "VivraModel", "VivraLogging"]),
         .target(name: "Gamification", dependencies: ["VivraModel"]),
         .target(name: "Norms", dependencies: ["InsightEngine", "NarrativeCore"]),
+        // Fixed cases, scorers and reports for AI-written summaries (PLAN Phase 6).
+        .target(name: "NarrativeEvals", dependencies: ["InsightEngine", "NarrativeCore", "SyncCore", "VivraModel"]),
+        .testTarget(
+            name: "NarrativeEvalsTests",
+            dependencies: ["NarrativeEvals", "InsightEngine", "NarrativeCore", "VivraModel"]),
         .testTarget(name: "NormsTests", dependencies: ["Norms", "InsightEngine", "NarrativeCore"]),
         .testTarget(name: "GamificationTests", dependencies: ["Gamification", "VivraModel", "NarrativeCore"]),
         .testTarget(name: "VivraLoggingTests", dependencies: ["VivraLogging"]),
