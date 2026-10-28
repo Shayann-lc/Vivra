@@ -5,11 +5,11 @@ and the definition of done for each phase.
 
 ## Current phase
 
-**Phase 6** (Daily Summary widget, automatic daily check-in, AI evals) is
-approved and in progress; its definition of done is in PLAN §7. Phases 0–5 are
-done. The device checks in `docs/DEVICE_TEST.md` and the decisions in
-`docs/APP_STORE.md` are with the owner. Anything beyond Phase 6 needs the
-owner's approval and a definition of done first.
+Phases 0–6 are done in code, with CI green on Xcode 26 and 27 (Phase 6: Daily
+Summary widget, automatic daily check-in, AI evals; PLAN §7). The device checks
+in `docs/DEVICE_TEST.md`, the live eval run on a Mac (`evals/README.md`) and the
+decisions in `docs/APP_STORE.md` are with the owner. There is no current phase:
+anything new needs the owner's approval and a definition of done first.
 
 ## Hard rules
 

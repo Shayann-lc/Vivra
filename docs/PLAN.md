@@ -1,6 +1,6 @@
 # Vivra — Architecture and Phased Plan
 
-Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–5 are done in code, with CI green. Phase 6 (daily summary widget and AI evals) is approved and in progress. The device checks for Phases 1–5 (`docs/DEVICE_TEST.md`) and the App Store decisions (`docs/APP_STORE.md`) are pending with the owner.
+Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–6 are done in code, with CI green on Xcode 26 and 27. The device checks for Phases 1–6 (`docs/DEVICE_TEST.md`), the live eval run on the owner's Mac (`evals/README.md`) and the App Store decisions (`docs/APP_STORE.md`) are pending with the owner.
 
 ## 1. Decisions already made
 
@@ -300,7 +300,7 @@ The owner asked for the interface to draw on public reviews of Whoop, Fitbit, Ap
 - Decorative images are hidden from VoiceOver.
 - Charts get accessibility labels and summaries, and icon-only controls get labels.
 - A new **UI test target** launches the app in an isolated mode (`-ui-testing`: temporary storage, no HealthKit prompts). It walks through onboarding and every tab, running Xcode's `performAccessibilityAudit()` on each screen in CI.
-- The audit ignores four kinds of finding that aren't about anything Vivra draws, and logs each one it ignores: findings with no element (pixel-level, such as content blurred behind the tab bar), elements behind the translucent tab bar or in the faded strip just above it (on wide iPhones whose tabs float at the side, the faded strip at the bottom edge of the screen instead; and, once a screen has scrolled, everything under the status bar and collapsed navigation bar and the faded strip below it), "Contrast nearly passed" (system secondary text and tint), and "Dynamic Type partially supported" (system list headers, labels and toolbar buttons). Everything else fails CI. Screenshots are best-effort: a simulator that times out taking one doesn't fail the audit. Contrast is also checked on a device with Accessibility Inspector (`docs/DEVICE_TEST.md`, Phase 5 B).
+- The audit ignores four kinds of finding that aren't about anything Vivra draws, and logs each one it ignores: findings with no element (pixel-level, such as content blurred behind the tab bar), elements behind the translucent tab bar or in the faded strip just above it (on wide iPhones whose tabs float at the side, the faded strip at the bottom edge of the screen instead; and, once a screen has scrolled, everything under the status bar and collapsed navigation bar and the faded strip below it), "Contrast nearly passed" (system secondary text and tint), and "Dynamic Type partially supported" (system list headers, labels and toolbar buttons). Everything else fails CI. Each audit runs in two passes: contrast and the other checks first, then the Dynamic Type and clipped-text checks, because those briefly enlarge the text and leave a scrolled list at a different position. Screenshots are best-effort: a simulator that times out taking one doesn't fail the audit. Contrast is also checked on a device with Accessibility Inspector (`docs/DEVICE_TEST.md`, Phase 5 B).
 - Today's cards use the grouped list colours (white cards on a grey page), like every other screen, so secondary text keeps its contrast.
 
 **Localization groundwork**
@@ -331,7 +331,7 @@ The owner asked for the interface to draw on public reviews of Whoop, Fitbit, Ap
 
 ### Phase 6 — Daily summary widget and AI evals
 
-Status: **approved and in progress** (owner, Phase 6 kickoff). The owner asked for both
+Status: **done in code**, CI green on Xcode 26 and 27 (approved by the owner at Phase 6 kickoff). The live eval run (item 6) and the device steps are with the owner. The owner asked for both
 features and chose these options at kickoff: the widget shows the headline and a
 summary; the check-in is made automatically each day; evals run in CI and live on
 the owner's Mac.
