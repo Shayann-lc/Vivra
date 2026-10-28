@@ -159,11 +159,21 @@ final class VivraUITests: XCTestCase {
                     height: 10_000 + navigationBar.frame.maxY + Self.scrollEdgeEffectHeight),
             ]
             : [tabBarFrame, bottomEdge]
+        // The text size checks briefly enlarge the text, which reflows a
+        // scrolled list and moves it. Contrast is measured first, on the
+        // screen as it was, and the text size checks run afterwards.
+        let textSizeChecks: XCUIAccessibilityAuditType = [.dynamicType, .textClipped]
+        for types in [XCUIAccessibilityAuditType.all.subtracting(textSizeChecks), textSizeChecks] {
+            audit(app, for: types, fadedBars: fadedBars)
+        }
+    }
+
+    private func audit(_ app: XCUIApplication, for types: XCUIAccessibilityAuditType, fadedBars: [CGRect]) {
         // A screen that's still updating can make the audit time out (code
         // -56). Give it a moment and try once more before failing.
         for attempt in 1...2 {
             do {
-                try app.performAccessibilityAudit { issue in
+                try app.performAccessibilityAudit(for: types) { issue in
                     // Every issue is named in the test log with its element,
                     // and the ones ignored say why, so CI shows what to fix.
                     let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)'" } ?? "no element"
