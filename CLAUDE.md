@@ -10,7 +10,7 @@ Connections, habits next to outcomes; PLAN §7). The device checks in
 `docs/DEVICE_TEST.md`, the live eval run on a Mac (`evals/README.md`) and the
 decisions in `docs/APP_STORE.md` are with the owner. There is no current phase:
 anything new needs the owner's approval and a definition of done first. The
-research-notes proposal (evidence cards) is the agreed next candidate.
+research-notes proposal (evidence cards) is proposed as the next phase, not yet approved.
 
 ## Hard rules
 
