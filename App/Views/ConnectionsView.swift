@@ -19,9 +19,9 @@ struct InsightsSectionPicker: View {
             Text("Summaries").tag(InsightsSection.summaries)
         }
         // Segmented controls don't grow with the largest text sizes, and a
-        // menu's label can clip; rows with a checkmark can't.
+        // picker's title can clip; rows with a checkmark can't.
         if typeSize.isAccessibilitySize {
-            picker.pickerStyle(.inline)
+            picker.pickerStyle(.inline).labelsHidden()
         } else {
             picker.pickerStyle(.segmented)
         }
@@ -54,7 +54,7 @@ struct ConnectionsView: View {
                     Button {
                         showingExplainer = true
                     } label: {
-                        Label("How Connections works", systemImage: "info.circle")
+                        IconText(symbol: "info.circle", text: String(localized: "How Connections works"))
                     }
                 } footer: {
                     if let note = note(board) { Text(note) }
@@ -83,7 +83,7 @@ struct ConnectionsView: View {
             Text("By Habit").tag(Pivot.byHabit)
         }
         if typeSize.isAccessibilitySize {
-            picker.pickerStyle(.inline)
+            picker.pickerStyle(.inline).labelsHidden()
         } else {
             picker.pickerStyle(.segmented)
         }
@@ -223,9 +223,9 @@ struct ConnectionComparison: View {
                     .foregroundStyle(.secondary)
             }
             if let latest = row.latest {
-                Label(
-                    ConnectionLabels.latest(latest, behaviour: row.behaviour),
-                    systemImage: latest.side == .less ? "circle" : "circle.fill"
+                IconText(
+                    symbol: latest.side == .less ? "circle" : "circle.fill",
+                    text: ConnectionLabels.latest(latest, behaviour: row.behaviour)
                 )
                 .font(.caption)
             }
@@ -233,6 +233,18 @@ struct ConnectionComparison: View {
         .padding(.vertical, 2)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(ConnectionLabels.accessibilitySentence(row))
+    }
+}
+
+/// An icon and its words as one piece of text, so it wraps at larger sizes
+/// rather than being cut off. VoiceOver reads only the words.
+struct IconText: View {
+    let symbol: String
+    let text: String
+
+    var body: some View {
+        Text("\(Image(systemName: symbol)) \(text)")
+            .accessibilityLabel(text)
     }
 }
 

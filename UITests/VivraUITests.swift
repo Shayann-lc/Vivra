@@ -111,9 +111,17 @@ final class VivraUITests: XCTestCase {
         audit(app, screenshot: "07d Connection detail")
         app.swipeUp()
         audit(app, screenshot: "07e Connection detail, scrolled")
-        // Once scrolled, iOS 27 may hide the inline title, so find the back
-        // button in whichever navigation bar is showing.
-        app.navigationBars.buttons.firstMatch.tap()
+        // Back to the top so the navigation bar shows again (iOS 27 can hide
+        // it once scrolled), then back; the edge swipe is the fallback.
+        app.swipeDown()
+        app.swipeDown()
+        let back = app.navigationBars.buttons.firstMatch
+        if back.waitForExistence(timeout: 5) {
+            back.tap()
+        } else {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.01, dy: 0.5))
+                .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)))
+        }
 
         let summaries = app.buttons["Summaries"]
         for _ in 0..<8 where !(summaries.exists && summaries.isHittable) { app.swipeDown() }

@@ -23,12 +23,11 @@ struct ConnectionDetailView: View {
                     Text(ConnectionLabels.confidenceText(comparison.confidence))
                         .font(.subheadline)
                     if let latest = row.latest {
-                        Label(
-                            ConnectionLabels.latest(latest, behaviour: row.behaviour),
-                            systemImage: latest.side == .less ? "circle" : "circle.fill"
+                        IconText(
+                            symbol: latest.side == .less ? "circle" : "circle.fill",
+                            text: ConnectionLabels.latest(latest, behaviour: row.behaviour)
                         )
                         .font(.subheadline)
-                        .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
@@ -104,10 +103,8 @@ private struct GroupColumn: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            // Wraps rather than truncating at larger text sizes.
-            Label(label, systemImage: symbol)
+            IconText(symbol: symbol, text: label)
                 .font(.subheadline)
-                .fixedSize(horizontal: false, vertical: true)
             Text(value)
                 .font(.title2.bold().monospacedDigit())
                 .fixedSize(horizontal: false, vertical: true)
