@@ -128,6 +128,8 @@ final class AppModel {
     private(set) var latestReports: [ReportKind: StoredReport] = [:]
     private(set) var creatingReport: ReportKind?
     private(set) var patterns: [Finding] = []
+    /// Every behaviour–outcome check, for Insights › Connections.
+    private(set) var connections: ConnectionBoard?
     private(set) var todayLogs: [LogEntry] = []
     private(set) var isSyncing = false
     private(set) var lastSyncHadFailures = false
@@ -145,6 +147,8 @@ final class AppModel {
     var quickLogRequested = false
     /// Set when the Daily Summary widget is tapped; the tab view opens Insights.
     var insightsRequested = false
+    /// Which half of Insights is showing.
+    var insightsSection = InsightsSection.connections
 
     let preferences: Preferences
     let lock: AppLock
@@ -408,6 +412,8 @@ final class AppModel {
             let calendar = environment.calendar()
             await Log.insights.measure("Patterns and glance") {
                 patterns = PatternList.build(dataset, clock: clock, calendar: calendar, sourcePolicy: reportPolicy)
+                connections = ConnectionBoard.build(
+                    dataset, clock: clock, calendar: calendar, sourcePolicy: reportPolicy)
                 glance = TodayGlance.build(dataset, clock: clock, calendar: calendar, sourcePolicy: reportPolicy)
             }
         } catch {
@@ -425,6 +431,28 @@ final class AppModel {
             calendar: environment.calendar(),
             sourcePolicy: dashboardPolicy
         )
+    }
+
+    /// The days behind a found connection, from the cached analysis window.
+    func connectionDays(_ finding: Finding) -> ConnectionDays? {
+        guard let analysisCache else { return nil }
+        return ConnectionDays.build(
+            finding,
+            dataset: analysisCache,
+            clock: environment.clock,
+            calendar: environment.calendar(),
+            sourcePolicy: reportPolicy
+        )
+    }
+
+    /// Links from widgets, controls and shortcuts. The Daily Summary widget
+    /// shows today's check-in, so it opens Insights on Summaries.
+    func open(_ url: URL) {
+        if url == QuickLogLink.url { quickLogRequested = true }
+        if url == InsightsLink.url {
+            insightsSection = .summaries
+            insightsRequested = true
+        }
     }
 
     func noteViewedPatterns() async {
@@ -835,6 +863,7 @@ final class AppModel {
         heartRecordings = HeartRecordings()
         latestReports = [:]
         patterns = []
+        connections = nil
         todayLogs = []
         progress = nil
         glance = nil
@@ -863,4 +892,9 @@ final class AppModel {
         phase = .deleted
         return report
     }
+}
+
+enum InsightsSection: Hashable {
+    case connections
+    case summaries
 }

@@ -190,6 +190,19 @@ public enum ConnectionLabels {
         return sentence
     }
 
+    /// Where a value sits against the person's usual range, for VoiceOver.
+    public static func rangePosition(_ value: Double, low: Double, high: Double) -> String {
+        value < low ? "below your usual range" : value > high ? "above your usual range" : "within your usual range"
+    }
+
+    /// Under the 28-day timeline.
+    public static func timelineNote(_ row: ConnectionBoard.Row) -> String {
+        row.lag == 0 && row.behaviour.metric != .sleepDuration
+            ? "Both are shown on the day they were recorded."
+            : "Each \(MetricWords.noun(row.outcome)) value is shown on the day of the "
+                + "\(MetricWords.noun(row.behaviour.metric)) it's compared with."
+    }
+
     // MARK: Fixed text
 
     /// Under the list, and in "How Connections works".

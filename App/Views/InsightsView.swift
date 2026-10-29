@@ -3,36 +3,61 @@ import NarrativeCore
 import SwiftUI
 import VivraStore
 
+/// Connections (habits next to outcomes) and Summaries (the reports).
 struct InsightsView: View {
-    let model: AppModel
+    @Bindable var model: AppModel
 
     var body: some View {
         NavigationStack {
-            List {
-                FeelingOffBlock(model: model)
-                ReportBlock(model: model, kind: .daily)
-                ReportBlock(model: model, kind: .weekly)
-                ReportBlock(model: model, kind: .monthly)
-
-                Section {
-                    NavigationLink {
-                        PatternsView(model: model)
-                    } label: {
-                        LabeledContent(
-                            "Patterns", value: model.patterns.isEmpty ? "None yet" : "\(model.patterns.count)")
-                    }
-                } footer: {
-                    Text("Patterns Vivra has found across your last 90 days, with how confident it is in each.")
-                }
-
-                Section {
-                } footer: {
-                    Text(Copy.disclaimer)
+            Group {
+                switch model.insightsSection {
+                case .connections: ConnectionsView(model: model)
+                case .summaries: SummariesView(model: model)
                 }
             }
             .navigationTitle("Insights")
-            .refreshable { await model.refreshAnalysis() }
+            .navigationDestination(for: ConnectionRoute.self) { route in
+                ConnectionDetailView(model: model, id: route.id)
+            }
+            .navigationDestination(for: Metric.self) { metric in
+                MetricDetailView(model: model, metric: metric)
+            }
         }
+    }
+}
+
+/// The reports: Why do I feel off today?, the check-in, weekly and monthly
+/// summaries, and the Patterns list.
+private struct SummariesView: View {
+    @Bindable var model: AppModel
+
+    var body: some View {
+        List {
+            Section {
+                InsightsSectionPicker(selection: $model.insightsSection)
+            }
+            FeelingOffBlock(model: model)
+            ReportBlock(model: model, kind: .daily)
+            ReportBlock(model: model, kind: .weekly)
+            ReportBlock(model: model, kind: .monthly)
+
+            Section {
+                NavigationLink {
+                    PatternsView(model: model)
+                } label: {
+                    LabeledContent(
+                        "Patterns", value: model.patterns.isEmpty ? "None yet" : "\(model.patterns.count)")
+                }
+            } footer: {
+                Text("Patterns Vivra has found across your last 90 days, with how confident it is in each.")
+            }
+
+            Section {
+            } footer: {
+                Text(Copy.disclaimer)
+            }
+        }
+        .refreshable { await model.refreshAnalysis() }
     }
 }
 

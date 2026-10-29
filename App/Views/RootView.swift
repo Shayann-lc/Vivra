@@ -15,10 +15,7 @@ struct RootView: View {
                 }
             }
             .task { await model.start() }
-            .onOpenURL { url in
-                if url == QuickLogLink.url { model.quickLogRequested = true }
-                if url == InsightsLink.url { model.insightsRequested = true }
-            }
+            .onOpenURL { url in model.open(url) }
             .onChange(of: scenePhase) { _, phase in
                 switch phase {
                 case .background:

@@ -74,16 +74,24 @@ struct MetricDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func date(_ day: Day) -> Date {
+    private func date(_ day: Day) -> Date { ChartUnits.date(day) }
+
+    private func plotted(_ value: Double) -> Double { ChartUnits.plotted(value, metric) }
+
+    private var unitLabel: String { ChartUnits.label(metric) }
+}
+
+/// How charts plot a metric: sleep in hours, everything else in its own unit.
+enum ChartUnits {
+    static func date(_ day: Day) -> Date {
         Calendar.autoupdatingCurrent.date(from: DateComponents(year: day.year, month: day.month, day: day.day)) ?? .now
     }
 
-    /// Sleep plots in hours; everything else in its own unit.
-    private func plotted(_ value: Double) -> Double {
+    static func plotted(_ value: Double, _ metric: Metric) -> Double {
         metric.unit == .seconds ? value / 3600 : value
     }
 
-    private var unitLabel: String {
+    static func label(_ metric: Metric) -> String {
         switch metric.unit {
         case .seconds: "Hours"
         case .beatsPerMinute: "bpm"
@@ -99,6 +107,7 @@ struct MetricDetailView: View {
         case .kilograms: "kg"
         case .degreesCelsius: "°C"
         case .breathsPerMinute: "Breaths/min"
+        case .drinks: "Drinks"
         default: "Value"
         }
     }

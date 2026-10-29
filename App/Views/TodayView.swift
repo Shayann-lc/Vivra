@@ -41,7 +41,7 @@ struct TodayView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     if let finding = model.glance?.worthNoticing {
-                        WorthNoticingCard(finding: finding) { openTab(.insights) }
+                        WorthNoticingCard(finding: finding, board: model.connections) { openTab(.insights) }
                     }
                     if model.lastSyncHadFailures {
                         Label(
@@ -88,6 +88,9 @@ struct TodayView: View {
             .navigationDestination(for: Metric.self) { metric in
                 MetricDetailView(model: model, metric: metric)
             }
+            .navigationDestination(for: ConnectionRoute.self) { route in
+                ConnectionDetailView(model: model, id: route.id)
+            }
             .sheet(isPresented: $reviewingPermissions) { PermissionReviewView(model: model) }
             .sheet(isPresented: $customizing) { CardEditorView(preferences: model.preferences) }
             .sheet(isPresented: $showingSettings) { SettingsView(model: model) }
@@ -120,31 +123,50 @@ private struct GlanceRowView: View {
     let row: TodayGlance.Row
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(MetricDescriptions.title(row.metric))
-                    .font(.subheadline)
-                Text(caption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(FindingFormatter.format(row.value, row.metric.unit))
-                    .font(.body.weight(.semibold).monospacedDigit())
-                if let usual = row.usual {
-                    Text("usual \(FindingFormatter.format(usual, row.metric.unit))")
-                        .font(.caption.monospacedDigit())
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(MetricDescriptions.title(row.metric))
+                        .font(.subheadline)
+                    Text(caption)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(FindingFormatter.format(row.value, row.metric.unit))
+                        .font(.body.weight(.semibold).monospacedDigit())
+                    if let usual = row.usual {
+                        Text("usual \(FindingFormatter.format(usual, row.metric.unit))")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
             }
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .accessibilityHidden(true)
+            if let low = row.usualLow, let high = row.usualHigh, !row.isSoFar {
+                UsualRangeBar(value: row.value, low: low, high: high)
+                    .frame(height: 10)
+            }
         }
         .contentShape(.rect)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private var accessibilityText: String {
+        var text =
+            "\(MetricDescriptions.title(row.metric)), \(caption): \(FindingFormatter.format(row.value, row.metric.unit))"
+        if let usual = row.usual {
+            text += ", usual \(FindingFormatter.format(usual, row.metric.unit))"
+        }
+        if let low = row.usualLow, let high = row.usualHigh, !row.isSoFar {
+            text += ", \(ConnectionLabels.rangePosition(row.value, low: low, high: high))"
+        }
+        return text
     }
 
     private var caption: String {
@@ -187,12 +209,69 @@ private struct ProgressStrip: View {
     }
 }
 
-/// The single most notable finding, in template wording. Opens Insights.
+/// Where today's value sits in the usual range (the middle 80% of the last
+/// 28 days). Decorative: the row's text says the same.
+private struct UsualRangeBar: View {
+    let value: Double
+    let low: Double
+    let high: Double
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let middle = proxy.size.height / 2
+            let span = max(high - low, abs(high) * 0.01, 0.000_1)
+            let lower = min(low - span * 0.5, value)
+            let upper = max(high + span * 0.5, value)
+            let x = { (v: Double) -> CGFloat in 4 + CGFloat((v - lower) / (upper - lower)) * (width - 8) }
+            ZStack {
+                Capsule()
+                    .fill(.quaternary)
+                    .frame(width: width, height: 2)
+                    .position(x: width / 2, y: middle)
+                Capsule()
+                    .fill(.tint.opacity(0.25))
+                    .frame(width: max(x(high) - x(low), 2), height: proxy.size.height)
+                    .position(x: (x(low) + x(high)) / 2, y: middle)
+                Circle()
+                    .fill(.tint)
+                    .frame(width: 8, height: 8)
+                    .position(x: x(value), y: middle)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// The single most notable finding. A pattern shows as its two-dot
+/// comparison and opens the connection; anything else is its template
+/// sentence and opens Insights.
 private struct WorthNoticingCard: View {
     let finding: Finding
+    let board: ConnectionBoard?
     let open: () -> Void
 
     var body: some View {
+        if let board, let row = board.row(id: finding.id), row.status.finding == finding {
+            NavigationLink(value: ConnectionRoute(id: row.id)) {
+                Card(title: "Worth noticing", symbol: "eye") {
+                    ConnectionComparison(
+                        row: row,
+                        title: ConnectionLabels.title(row),
+                        usual: board.usual[row.outcome],
+                        domain: ConnectionAxis.domain(row.outcome, board: board)
+                    )
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Worth noticing. \(TemplateRenderer.sentence(for: finding))")
+        } else {
+            sentenceCard
+        }
+    }
+
+    private var sentenceCard: some View {
         Button(action: open) {
             Card(title: "Worth noticing", symbol: "eye") {
                 Text(TemplateRenderer.sentence(for: finding))

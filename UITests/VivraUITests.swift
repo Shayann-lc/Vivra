@@ -20,19 +20,8 @@ final class VivraUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing", "-sample-data"]
         app.launch()
-
-        tap(app.buttons["Continue"], until: app.buttons["I Understand"], auditing: app, screenshot: "01 Welcome")
-        let notNow = app.buttons["Not Now"]
-        tap(app.buttons["I Understand"], until: notNow, auditing: app, screenshot: "02 Disclaimer")
-
-        audit(app, screenshot: "03 Permission")
-        let goToDashboard = app.buttons["Go to Dashboard"]
-        while notNow.exists && !goToDashboard.exists {
-            notNow.tap()
-            _ = goToDashboard.waitForExistence(timeout: 2)
-        }
+        completeOnboarding(app, audited: true)
         let todayTab = tabButton("Today", in: app)
-        tap(goToDashboard, until: todayTab, auditing: app, screenshot: "04 All set")
 
         for (number, tab) in [("05", "Today"), ("06", "Log"), ("07", "Insights"), ("08", "Progress")] {
             let button = tabButton(tab, in: app)
@@ -49,6 +38,7 @@ final class VivraUITests: XCTestCase {
                 app.swipeUp()
                 audit(app, screenshot: "05b Today, scrolled")
             case "Insights":
+                connections(app)
                 let weekly = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Weekly summary'"))
                     .firstMatch
                 // Today's automatic check-in sits above it, so on short
@@ -78,6 +68,70 @@ final class VivraUITests: XCTestCase {
         audit(app, screenshot: "09 Settings")
     }
 
+    /// Connections at one of the largest text sizes, where rows stack and
+    /// the pickers become menus.
+    func testConnectionsAtALargeTextSize() throws {
+        continueAfterFailure = true
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing", "-sample-data", "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityL",
+        ]
+        app.launch()
+        completeOnboarding(app, audited: false)
+        let insights = tabButton("Insights", in: app)
+        XCTAssertTrue(insights.waitForExistence(timeout: timeout), "Insights tab")
+        for _ in 1...3 where !insights.isSelected {
+            insights.tap()
+            _ = XCTWaiter.wait(
+                for: [
+                    XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: insights)
+                ],
+                timeout: 5)
+        }
+        audit(app, screenshot: "10 Connections, larger text")
+    }
+
+    /// Connections (PLAN Phase 7): by outcome (audited above as "07"), by
+    /// habit, one connection's detail, then back to Summaries.
+    private func connections(_ app: XCUIApplication) {
+        let byHabit = app.buttons["By Habit"]
+        XCTAssertTrue(byHabit.waitForExistence(timeout: timeout), "By Habit")
+        byHabit.tap()
+        audit(app, screenshot: "07c Connections, by habit")
+
+        // A found connection's label is its full sentence ("…: with none, a
+        // median of …"); rows with nothing to show aren't links.
+        let found = app.buttons.matching(NSPredicate(format: "label CONTAINS ': with '")).firstMatch
+        reveal(found, in: app)
+        let detail = app.navigationBars["Connection"]
+        tap(found, until: detail, auditing: app, screenshot: nil)
+        audit(app, screenshot: "07d Connection detail")
+        app.swipeUp()
+        audit(app, screenshot: "07e Connection detail, scrolled")
+        detail.buttons.firstMatch.tap()
+
+        let summaries = app.buttons["Summaries"]
+        for _ in 0..<8 where !(summaries.exists && summaries.isHittable) { app.swipeDown() }
+        tap(summaries, until: app.buttons["Why do I feel off today?"], auditing: app, screenshot: nil)
+    }
+
+    /// Onboarding, audited and kept as screenshots unless `audited` is off.
+    private func completeOnboarding(_ app: XCUIApplication, audited: Bool) {
+        let auditing = audited ? app : nil
+        tap(app.buttons["Continue"], until: app.buttons["I Understand"], auditing: auditing, screenshot: "01 Welcome")
+        let notNow = app.buttons["Not Now"]
+        tap(app.buttons["I Understand"], until: notNow, auditing: auditing, screenshot: "02 Disclaimer")
+
+        if audited { audit(app, screenshot: "03 Permission") }
+        let goToDashboard = app.buttons["Go to Dashboard"]
+        while notNow.exists && !goToDashboard.exists {
+            notNow.tap()
+            _ = goToDashboard.waitForExistence(timeout: 2)
+        }
+        tap(goToDashboard, until: tabButton("Today", in: app), auditing: auditing, screenshot: "04 All set")
+    }
+
     /// Scrolls until `element` is on screen. Lists only create rows near the
     /// visible area, so an element further down doesn't exist until then.
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
@@ -93,17 +147,17 @@ final class VivraUITests: XCTestCase {
         app.buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch
     }
 
-    /// Audits the current screen, then taps the element until `next`
-    /// appears. CI simulators can be slow enough to drop a tap made while
+    /// Audits the current screen (unless `app` is nil), then taps the
+    /// element until `next` appears. CI simulators can be slow enough to drop a tap made while
     /// the app is still settling, so it tries up to three times.
     private func tap(
         _ element: XCUIElement,
         until next: XCUIElement,
-        auditing app: XCUIApplication,
+        auditing app: XCUIApplication?,
         screenshot name: String?
     ) {
         XCTAssertTrue(element.waitForExistence(timeout: timeout), element.description)
-        audit(app, screenshot: name)
+        if let app { audit(app, screenshot: name) }
         for _ in 1...3 {
             if element.exists { element.tap() }
             if next.waitForExistence(timeout: timeout) { return }

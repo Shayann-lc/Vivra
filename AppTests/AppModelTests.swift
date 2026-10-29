@@ -217,6 +217,39 @@ import Testing
         #expect(harness.model.latestReport(.weekly)?.summary.draft.bullets.isEmpty == false)
     }
 
+    /// Connections makes the same checks as the Patterns list, so a found
+    /// connection is exactly a listed pattern (PLAN Phase 7).
+    @Test func connectionsMatchThePatternsList() async throws {
+        let harness = Self.makeHarness(sampleData: true)
+        defer { harness.cleanUp() }
+        await harness.model.start()
+        await harness.model.completeOnboarding()
+
+        let board = try #require(harness.model.connections)
+        #expect(board.rows.count == 17)
+        let found = board.found.map(\.id).sorted()
+        let patterns = harness.model.patterns.map(\.id).filter { $0.hasPrefix("pattern.") }.sorted()
+        #expect(!found.isEmpty)
+        #expect(found == patterns)
+        let finding = try #require(board.found.first?.status.finding)
+        #expect(harness.model.connectionDays(finding)?.pairs.isEmpty == false)
+    }
+
+    /// The Daily Summary widget shows today's check-in, so its link opens
+    /// Insights on Summaries rather than Connections.
+    @Test func theWidgetLinkOpensSummaries() {
+        let harness = Self.makeHarness()
+        defer { harness.cleanUp() }
+        #expect(harness.model.insightsSection == .connections)
+
+        harness.model.open(InsightsLink.url)
+        #expect(harness.model.insightsRequested)
+        #expect(harness.model.insightsSection == .summaries)
+
+        harness.model.open(QuickLogLink.url)
+        #expect(harness.model.quickLogRequested)
+    }
+
     @Test func dailyCheckInWithoutDataUsesTheEmptyTemplate() async {
         let harness = Self.makeHarness()
         defer { harness.cleanUp() }

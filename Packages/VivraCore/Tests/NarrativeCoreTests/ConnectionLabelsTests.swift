@@ -108,7 +108,7 @@ import VivraModel
         var strings = [
             ConnectionLabels.title(row), ConnectionLabels.timing(row), ConnectionLabels.status(row),
             ConnectionLabels.accessibilitySentence(row), ConnectionLabels.behaviourName(row.behaviour),
-            ConnectionLabels.outcomeName(row.outcome),
+            ConnectionLabels.outcomeName(row.outcome), ConnectionLabels.timelineNote(row),
         ]
         strings += [ConnectionLabels.comparison(row), ConnectionLabels.evidence(row)].compactMap { $0 }
         if let latest = row.latest { strings.append(ConnectionLabels.latest(latest, behaviour: row.behaviour)) }
@@ -123,6 +123,8 @@ import VivraModel
         ConnectionLabels.explainer + [
             ConnectionLabels.footer, ConnectionLabels.lowDataNote, ConnectionLabels.noneFoundNote,
             ConnectionLabels.usual(usual, .sleepDuration),
+            ConnectionLabels.rangePosition(1, low: 2, high: 3), ConnectionLabels.rangePosition(2, low: 2, high: 3),
+            ConnectionLabels.rangePosition(4, low: 2, high: 3),
         ]
 
     @Test func followsTheStyleGuide() {
