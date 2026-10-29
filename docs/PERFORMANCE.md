@@ -73,4 +73,11 @@ measured baselines; adjust them after the first run.
    the Xcode memory gauge. The export loads every table into memory, so this is the
    point to watch as data grows.
 
+### 6. Connections (Phase 7)
+
+1. With 90 days of data, pull to refresh Insights › Connections while recording the
+   `insights` category.
+2. ✅ Building Connections adds under **150 ms** to the **Patterns and glance**
+   interval on a recent iPhone. Opening a connection's detail feels instant.
+
 Record results and the device model here when you run it.

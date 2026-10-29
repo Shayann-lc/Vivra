@@ -103,3 +103,29 @@ high: Whoop 4.8 from 91K ratings, and Fitbit 4.5 from 709K.
 | Punishing streaks (5) | **Forgiving runs.** Runs are kept going by earned pauses. You can log for earlier today or yesterday, so forgetting doesn't cost anything. Total days logged is shown beside the current run, so a reset never wipes out visible progress. There's never a "streak lost" message, only "Welcome back". |
 | Removed features (6) | **Additive changes only.** Everything from Phases 1 and 2 stays and is reorganised, not removed. |
 | Gentle reminders liked | **One optional reminder a day** at a time you choose. It's skipped once you've logged that day, and it stops after a week of not opening the app. |
+
+## Addendum (Phase 7): showing habits next to outcomes
+
+The owner found Insights too flat: walls of sentences with four to six numbers each,
+the same pattern repeated across screens, and the one view about behaviours and
+outcomes (Patterns) hidden in a single row. Research for Phase 7 looked at how other
+apps show what goes with what:
+
+- **Whoop** lists behaviours against one outcome (Recovery), ranked, with details on
+  tap. It says how many days a behaviour needs before it's compared (5 with, 5
+  without, in 90 days), and its monthly report warns that other things change on the
+  same days. Members question impacts shown without both groups.
+- **Bearable** overlays one factor on one outcome over time and highlights the days,
+  and lets you start from one factor and see every outcome.
+- **Exist** shows a correlation's strength and confidence separately.
+- **Oura** gives each contributor a small "where you are" bar.
+
+| Finding | Vivra design rule |
+|---|---|
+| One outcome with behaviours ranked against it is the clearest holistic layout | **Connections, by outcome:** each outcome is a section, and each behaviour checked against it is a row on the outcome's shared axis, in real units. **By habit** starts from the behaviour instead. |
+| Summaries without the days behind them aren't trusted | **Show the days.** A connection's detail plots every day in its group, with each group's median, and the last 28 days of both metrics. |
+| Impacts shown without both groups mislead | **Both groups or nothing.** A row shows numbers only when it passed every gate. Otherwise it says why ("No clear pattern in 84 days", "Needs more days (6 of 14)"), with no near-miss numbers. |
+| Strength and confidence are different things | **Both values, both day counts and the confidence word** on every found row. |
+| Unlock thresholds and confounding should be stated | **Plain words:** "Vivra compares once there are 14 days with both", and "Other things often change on the same days too." |
+| Scores and good/bad colours hide the why | **No score, no red or green.** Groups are "less or none" (hollow dot) and "more or some" (filled dot): shape and label, never colour alone. The usual range is shaded behind. |
+

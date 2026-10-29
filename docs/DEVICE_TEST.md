@@ -272,3 +272,44 @@ Run the checklist in `docs/PERFORMANCE.md`.
 3. If it passes, run it again with `--record` and commit the file in
    `evals/recorded/`, so CI keeps those outputs passing.
 
+# Phase 7 device steps
+
+Use a phone with at least a few weeks of Health data and some Quick Log entries.
+
+## A. Connections
+
+1. Open Insights. ✅ It opens on **Connections**, with a summary line ("Last 90
+   days: …") and sections for sleep, resting heart rate, HRV, mood, energy and
+   stress.
+2. ✅ Each found row shows two dots on one line over a shaded band, both values,
+   both day counts and a confidence word. Rows with nothing to show say why, with
+   no values.
+3. Switch to **By Habit**. ✅ Sections are habits (sleep, alcohol, caffeine…), each
+   listing the outcomes checked against it.
+4. Tap a found row. ✅ The detail shows both groups' medians, each day as a dot,
+   the last 28 days of both metrics, the sentence in words, and how it was worked
+   out. The two links open each metric's 28 days.
+5. Switch to **Summaries**. ✅ It's the previous Insights screen, unchanged.
+6. Tap the Daily Summary widget. ✅ Vivra opens on Insights › Summaries.
+
+## B. Today
+
+1. ✅ Each *At a glance* row has a thin bar with your usual range shaded and a dot
+   for the current value.
+2. When *Worth noticing* is a pattern: ✅ it shows the two-dot comparison, and
+   tapping it opens that connection's detail.
+
+## C. Accessibility
+
+1. With VoiceOver on, swipe through Connections. ✅ Each row is read as one
+   sentence, for example "Sleep and heart rate variability (SDNN) the day after:
+   with 6h 49m or less, a median of 44 ms over 30 days; …". Glance rows end with
+   "within", "above" or "below your usual range".
+2. Set the largest accessibility text size. ✅ Connections and the detail are
+   readable without clipped text; the pickers become menus and the detail's two
+   groups stack.
+
+## D. Performance
+
+1. Follow `docs/PERFORMANCE.md` §6.
+
