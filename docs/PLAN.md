@@ -1,6 +1,6 @@
 # Vivra — Architecture and Phased Plan
 
-Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–6 are done in code, with CI green on Xcode 26 and 27. Phase 7 (Connections) is approved and in progress. The device checks for Phases 1–6 (`docs/DEVICE_TEST.md`), the live eval run on the owner's Mac (`evals/README.md`) and the App Store decisions (`docs/APP_STORE.md`) are pending with the owner.
+Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–7 are done in code, with CI green on Xcode 26 and 27. The device checks for Phases 1–7 (`docs/DEVICE_TEST.md`), the live eval run on the owner's Mac (`evals/README.md`) and the App Store decisions (`docs/APP_STORE.md`) are pending with the owner.
 
 ## 1. Decisions already made
 
@@ -425,7 +425,7 @@ Pattern lists and the Today screen use templates only.
 
 ### Phase 7 — Connections: habits next to outcomes
 
-Status: **approved and in progress** (owner, after the Phase 6 report). The owner
+Status: **done in code**, CI green on Xcode 26 and 27 (approved by the owner after the Phase 6 report). The device steps and the on-device performance check are with the owner. The owner
 asked for a holistic view where people can easily see how daily behaviours go with
 outcomes, instead of walls of text, and looked to Whoop for ideas. The research and
 design are in the proposal the owner approved ("Connections"); the owner accepted

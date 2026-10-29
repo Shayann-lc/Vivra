@@ -5,11 +5,12 @@ and the definition of done for each phase.
 
 ## Current phase
 
-**Phase 7** (Connections: habits next to outcomes) is approved and in progress;
-its definition of done is in PLAN §7. Phases 0–6 are done. The device checks in
+Phases 0–7 are done in code, with CI green on Xcode 26 and 27 (Phase 7:
+Connections, habits next to outcomes; PLAN §7). The device checks in
 `docs/DEVICE_TEST.md`, the live eval run on a Mac (`evals/README.md`) and the
-decisions in `docs/APP_STORE.md` are with the owner. Anything beyond Phase 7
-needs the owner's approval and a definition of done first.
+decisions in `docs/APP_STORE.md` are with the owner. There is no current phase:
+anything new needs the owner's approval and a definition of done first. The
+research-notes proposal (evidence cards) is the agreed next candidate.
 
 ## Hard rules
 

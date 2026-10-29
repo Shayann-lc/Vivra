@@ -138,5 +138,5 @@ environment which crypto provider SQLCipher.swift 4.19.0 links on Apple platform
 - [ ] Privacy policy (`docs/PRIVACY_POLICY.md`): date and contact filled in, hosted,
   URL entered in App Store Connect.
 - [x] Export-compliance answer and plist key.
-- [ ] The device steps in `docs/DEVICE_TEST.md` (Phases 1–6) pass.
+- [ ] The device steps in `docs/DEVICE_TEST.md` (Phases 1–7) pass.
 - [ ] The profiling checklist in `docs/PERFORMANCE.md` has been run.
