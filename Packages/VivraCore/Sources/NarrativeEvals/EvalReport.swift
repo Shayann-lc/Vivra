@@ -1,3 +1,4 @@
+import Evidence
 import Foundation
 import InsightEngine
 import NarrativeCore
@@ -91,6 +92,11 @@ public struct EvalRunReport: Codable, Sendable {
             for finding in evalCase.findings {
                 lines.append("- Template: \(TemplateRenderer.sentence(for: finding))")
                 lines.append("  - Shown: \(shownByID[finding.id] ?? "(missing)")")
+                if let note = outcome.notes.first(where: { $0.findingID == finding.id }),
+                    let card = EvidenceLibrary.includingDrafts.card(id: note.cardID)
+                {
+                    lines.append("  - Research note (\(card.id), \(note.agreement.rawValue)): \(card.statement)")
+                }
             }
             lines.append("")
         }

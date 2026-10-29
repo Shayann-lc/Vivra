@@ -33,7 +33,7 @@ public enum EvalCorpus {
     public static let all: [EvalCase] = cases()
 
     static func cases() -> [EvalCase] {
-        seededCases() + handMadeCases()
+        seededCases() + handMadeCases() + researchCases()
     }
 
     // MARK: From sample data, through the real report builders
@@ -205,6 +205,85 @@ public enum EvalCorpus {
             EvalCase(
                 id: "hand-weekly-extremes", kind: .weekly,
                 findings: [anomalyShort, anomalyHigh, noneVersusSome, sameDay, workoutDifference]),
+        ]
+    }
+
+    // MARK: Research notes (PLAN Phase 8)
+
+    /// Patterns that agree with their card, differ, match mixed research or
+    /// an indirect card, fall below the confidence gate, exceed the cap of
+    /// three, appear in reports that never show notes, or have only a
+    /// record-only card.
+    static func researchCases() -> [EvalCase] {
+        func pattern(
+            _ id: String, _ x: Metric, _ y: Metric, lag: Int, low: Double, high: Double,
+            confidence: Confidence = .medium
+        ) -> Finding {
+            Finding(
+                id: id,
+                detail: .correlation(
+                    Correlation(
+                        x: x, y: y, lag: lag, rho: high > low ? 0.4 : -0.4, rhoLow: 0.2, rhoHigh: 0.6, days: 72,
+                        pValue: 0.001, adjustedPValue: 0.01, confidence: confidence, split: .thirds,
+                        lowGroupMaxX: x == .sleepDuration ? 6.6 * 3600 : 1,
+                        highGroupMinX: x == .sleepDuration ? 7.5 * 3600 : 2, lowGroupMedianY: low,
+                        highGroupMedianY: high, lowGroupDays: 24, highGroupDays: 24)))
+        }
+        let hour = 3600.0
+        let alcoholHrvLower = pattern(
+            "research-alcohol-hrv", .alcohol, .heartRateVariability, lag: 1, low: 51, high: 43)
+        let alcoholHrvHigher = pattern(
+            "research-alcohol-hrv-differs", .alcohol, .heartRateVariability, lag: 1, low: 43, high: 51)
+        let alcoholSleep = pattern(
+            "research-alcohol-sleep", .alcohol, .sleepDuration, lag: 1, low: 7.2 * hour, high: 6.7 * hour)
+        let mindfulSleep = pattern(
+            "research-mindful-sleep", .mindfulMinutes, .sleepDuration, lag: 1, low: 6.9 * hour, high: 7.3 * hour)
+        let caffeineSleep = pattern(
+            "research-caffeine-sleep", .caffeine, .sleepDuration, lag: 1, low: 7.4 * hour, high: 6.8 * hour)
+        let sleepMood = pattern("research-sleep-mood", .sleepDuration, .mood, lag: 0, low: 3, high: 4)
+        let sleepEnergy = pattern("research-sleep-energy", .sleepDuration, .energyLevel, lag: 0, low: 3, high: 4)
+        let stepsMood = pattern("research-steps-mood", .steps, .mood, lag: 0, low: 3, high: 4)
+        let stepsSleep = pattern(
+            "research-steps-sleep", .steps, .sleepDuration, lag: 1, low: 7.3 * hour, high: 7.0 * hour)
+        let lowConfidence = pattern(
+            "research-low-confidence", .alcohol, .heartRateVariability, lag: 1, low: 51, high: 43, confidence: .low)
+        let workoutSleep = Finding(
+            id: "research-workout-sleep",
+            detail: .groupDifference(
+                GroupDifference(
+                    condition: .workoutDay, conditionThreshold: 20, outcome: .sleepDuration,
+                    withConditionMedian: 7.5 * hour, withoutConditionMedian: 7.0 * hour, withConditionDays: 30,
+                    withoutConditionDays: 52, differenceLow: 600, differenceHigh: 2_400, pValue: 0.02,
+                    adjustedPValue: 0.05, confidence: .medium)))
+        let shorterSleep = Finding(
+            id: "research-shorter-sleep",
+            detail: .groupDifference(
+                GroupDifference(
+                    condition: .shorterSleep, conditionThreshold: 7.1 * hour, outcome: .restingHeartRate,
+                    withConditionMedian: 60, withoutConditionMedian: 57, withConditionDays: 41,
+                    withoutConditionDays: 44, differenceLow: 1, differenceHigh: 5, pValue: 0.001,
+                    adjustedPValue: 0.004, confidence: .high)))
+        let anomaly = Finding(
+            id: "research-anomaly",
+            detail: .anomaly(
+                Anomaly(metric: .restingHeartRate, daysAgo: 0, value: 66, usualLow: 54, usualHigh: 60, baselineDays: 28)
+            ))
+
+        return [
+            EvalCase(id: "research-agrees", kind: .weekly, findings: [alcoholHrvLower]),
+            EvalCase(id: "research-differs", kind: .weekly, findings: [alcoholHrvHigher]),
+            EvalCase(id: "research-mixed", kind: .monthly, findings: [alcoholSleep, stepsSleep]),
+            EvalCase(id: "research-indirect", kind: .daily, findings: [mindfulSleep, sleepEnergy]),
+            EvalCase(id: "research-low-confidence", kind: .weekly, findings: [lowConfidence]),
+            EvalCase(id: "research-group", kind: .weekly, findings: [workoutSleep]),
+            EvalCase(id: "research-record-only", kind: .weekly, findings: [shorterSleep]),
+            EvalCase(id: "research-two-cards", kind: .monthly, findings: [sleepMood]),
+            EvalCase(
+                id: "research-cap", kind: .monthly,
+                findings: [caffeineSleep, alcoholHrvLower, sleepMood, stepsMood, mindfulSleep]),
+            EvalCase(id: "research-feeling-off", kind: .feelingOff, findings: [alcoholHrvLower, anomaly]),
+            EvalCase(id: "research-anomaly", kind: .daily, findings: [anomaly]),
+            EvalCase(id: "research-mixed-with-differs", kind: .weekly, findings: [alcoholHrvHigher, sleepMood]),
         ]
     }
 }

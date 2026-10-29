@@ -1,3 +1,4 @@
+import Evidence
 import Foundation
 import InsightEngine
 import NarrativeCore
@@ -275,5 +276,87 @@ private struct FailingNarrator: Narrator {
                 #expect(issues.isEmpty, "\(file.lastPathComponent) \(output.caseID): \(issues)")
             }
         }
+    }
+}
+
+/// Research notes in the evals (PLAN Phase 8).
+@Suite struct ResearchNoteEvalTests {
+    private func evalCase(_ id: String) throws -> EvalCase {
+        try #require(EvalCorpus.all.first { $0.id == id })
+    }
+
+    /// Template summaries with draft cards: how many notes each research
+    /// case gets, and every note passes the scorer.
+    @Test func researchCasesGetTheExpectedNotes() async throws {
+        let expected: [String: Int] = [
+            "research-agrees": 1, "research-differs": 0, "research-mixed": 2, "research-indirect": 2,
+            "research-low-confidence": 0, "research-group": 1, "research-record-only": 0, "research-two-cards": 1,
+            "research-cap": 3, "research-feeling-off": 0, "research-anomaly": 0, "research-mixed-with-differs": 1,
+        ]
+        let cases = EvalCorpus.all.filter { expected[$0.id] != nil }
+        #expect(cases.count == expected.count)
+        let outcomes = await EvalRunner.run(cases, narrator: nil)
+        for outcome in outcomes {
+            #expect(outcome.notes.count == expected[outcome.caseID], "\(outcome.caseID)")
+            #expect(outcome.issues.isEmpty, "\(outcome.caseID): \(outcome.issues)")
+        }
+    }
+
+    @Test func releaseLibraryHasNoNotesUntilCardsAreSignedOff() async throws {
+        let outcomes = await EvalRunner.run([try evalCase("research-agrees")], narrator: nil, evidence: .shipping)
+        #expect(outcomes.first?.notes == [])
+        #expect(outcomes.first?.issues == [])
+    }
+
+    @Test func researchClaimsCatchesResearchLanguage() throws {
+        let evalCase = try evalCase("research-agrees")
+        let finding = try #require(evalCase.findings.first)
+        let sentence = TemplateRenderer.sentence(for: finding)
+        let draft = NarrativeDraft(
+            headline: "Your last 7 days",
+            bullets: [.init(findingID: finding.id, text: sentence + " Studies have found the same.")])
+        let issues = EvalScoring.score(draft, for: evalCase)
+        #expect(issues.contains { $0.scorer == .researchClaims })
+        #expect(!issues.contains { $0.scorer == .validator })
+    }
+
+    @Test func notesScorerCatchesNotesThatBreakThePolicy() throws {
+        let library = EvidenceLibrary.includingDrafts
+        let agrees = try evalCase("research-agrees")
+        let finding = try #require(agrees.findings.first)
+        let good = try #require(EvidenceMatcher.match(finding, library: library))
+        #expect(EvalScoring.scoreNotes([good], for: agrees, library: library).isEmpty)
+        // Missing.
+        #expect(EvalScoring.scoreNotes([], for: agrees, library: library).contains { $0.scorer == .notes })
+        // The wrong card.
+        let wrong = ResearchNote(
+            findingID: finding.id, cardID: "caffeine.sleepDuration.nextNight", revision: 1, agreement: .agrees)
+        #expect(!EvalScoring.scoreNotes([wrong], for: agrees, library: library).isEmpty)
+        // In a report that never shows notes.
+        let feelingOff = try evalCase("research-feeling-off")
+        #expect(!EvalScoring.scoreNotes([good], for: feelingOff, library: library).isEmpty)
+        // Shown although the data differs.
+        let differs = try evalCase("research-differs")
+        let differingFinding = try #require(differs.findings.first)
+        let shown = ResearchNote(
+            findingID: differingFinding.id, cardID: good.cardID, revision: good.revision, agreement: .differs)
+        #expect(!EvalScoring.scoreNotes([shown], for: differs, library: library).isEmpty)
+        // More than three.
+        let cap = try evalCase("research-cap")
+        let tooMany = cap.findings.compactMap { EvidenceMatcher.match($0, library: library) }
+        #expect(tooMany.count > EvidenceMatcher.maximumNotes)
+        #expect(!EvalScoring.scoreNotes(tooMany, for: cap, library: library).isEmpty)
+    }
+
+    /// Summaries saved before Phase 8 have no notes and must still load.
+    @Test func summariesSavedWithoutNotesStillDecode() throws {
+        let json = #"{"draft":{"headline":"Your last 7 days","bullets":[]},"generator":"template","findings":[]}"#
+        let summary = try JSONDecoder().decode(ComposedSummary.self, from: Data(json.utf8))
+        #expect(summary.notes.isEmpty)
+        let withNotes = ComposedSummary(
+            draft: summary.draft, generator: .template, findings: [],
+            notes: [ResearchNote(findingID: "x", cardID: "y", revision: 2, agreement: .researchMixed)])
+        let roundTrip = try JSONDecoder().decode(ComposedSummary.self, from: JSONEncoder().encode(withNotes))
+        #expect(roundTrip == withNotes)
     }
 }

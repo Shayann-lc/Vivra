@@ -93,3 +93,45 @@ The research behind this is in `docs/UX_RESEARCH.md` §5.
 - Draw missed days as empty, neutral circles. Never use red or a cross.
 - Reminders are an invitation ("if you'd like"), with no numbers, no health data
   and no run counts.
+
+## Research notes (Phase 8)
+
+Research notes are a separate kind of text: short summaries of what published
+studies found in **groups of people**, written and reviewed by people, never by the
+model (PLAN decision 11). The register and sign-off checklist are in
+`docs/EVIDENCE.md`.
+
+**The model never talks about research.** Its instructions say "Don't mention
+research, studies or experts", and the validator rejects any of
+`StyleGuide.researchPhrases` (research, study, studies, evidence, experts, trial,
+"according to", "shown to" and so on) in model text. Only the reviewed note, shown
+word for word beside the sentence, may describe research.
+
+Every note (`EvidenceCard.statement`):
+
+- **Starts by naming the evidence**: "In a large study of…", "Across trials…",
+  "Research on…", so the reader knows at once it's about groups of people.
+- **Never says "you" or "your"**, and never refers to the person's data. It sits
+  under their sentence, visually separate, labelled "Research · groups of people".
+- **Has no digits.** Doses and times are in words ("about two standard drinks").
+  Study sizes and designs are citation details in the Sources sheet.
+- **Follows every rule above**: no judgement, advice or clinical words, no causal
+  phrases, and also not "effect" or "effects" (`StyleGuide.researchNoteAvoids`).
+- **Says what was measured** when the study's measure isn't Vivra's ("These trials
+  measured how people rated their sleep, not how long they slept.").
+- Is **45 words or fewer**, with its population, at least one caveat, and every
+  source cited with a DOI or URL and its licence.
+
+Notes appear only under patterns of medium or high confidence in the daily check-in,
+weekly and monthly summaries, at most three per summary. Never on Today, in the
+widget or in "Why do I feel off today?", where a research line could read as a
+reason. When the person's data goes the opposite way, the summary shows no note; the
+pattern's detail shows the research with: "Studies of groups of people mostly found
+the opposite direction. People vary, and findings about groups don't apply to
+everyone."
+
+Strength labels are neutral: "Many studies agree", "Some studies", "A few small
+studies", "Studies disagree".
+
+A test (`EvidenceCardLintTests`) checks every shown card and every fixed line
+against these rules.

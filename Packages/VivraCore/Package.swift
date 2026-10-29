@@ -20,20 +20,26 @@ let package = Package(
         .library(name: "Gamification", targets: ["Gamification"]),
         .library(name: "Norms", targets: ["Norms"]),
         .library(name: "NarrativeEvals", targets: ["NarrativeEvals"]),
+        .library(name: "Evidence", targets: ["Evidence"]),
     ],
     targets: [
         .target(name: "VivraLogging"),
         .target(name: "VivraModel"),
         .target(name: "SyncCore", dependencies: ["VivraModel", "VivraLogging"]),
         .target(name: "InsightEngine", dependencies: ["VivraModel"]),
-        .target(name: "NarrativeCore", dependencies: ["InsightEngine", "VivraModel", "VivraLogging"]),
+        // Reviewed research notes, picked in Swift (PLAN Phase 8).
+        .target(name: "Evidence", dependencies: ["InsightEngine", "VivraModel"]),
+        .target(name: "NarrativeCore", dependencies: ["InsightEngine", "Evidence", "VivraModel", "VivraLogging"]),
         .target(name: "Gamification", dependencies: ["VivraModel"]),
         .target(name: "Norms", dependencies: ["InsightEngine", "NarrativeCore"]),
         // Fixed cases, scorers and reports for AI-written summaries (PLAN Phase 6).
-        .target(name: "NarrativeEvals", dependencies: ["InsightEngine", "NarrativeCore", "SyncCore", "VivraModel"]),
+        .target(
+            name: "NarrativeEvals",
+            dependencies: ["Evidence", "InsightEngine", "NarrativeCore", "SyncCore", "VivraModel"]),
         .testTarget(
             name: "NarrativeEvalsTests",
-            dependencies: ["NarrativeEvals", "InsightEngine", "NarrativeCore", "VivraModel"]),
+            dependencies: ["NarrativeEvals", "Evidence", "InsightEngine", "NarrativeCore", "VivraModel"]),
+        .testTarget(name: "EvidenceTests", dependencies: ["Evidence", "InsightEngine", "NarrativeCore", "VivraModel"]),
         .testTarget(name: "NormsTests", dependencies: ["Norms", "InsightEngine", "NarrativeCore"]),
         .testTarget(name: "GamificationTests", dependencies: ["Gamification", "VivraModel", "NarrativeCore"]),
         .testTarget(name: "VivraLoggingTests", dependencies: ["VivraLogging"]),

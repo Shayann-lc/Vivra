@@ -1,3 +1,4 @@
+import Evidence
 import Foundation
 import InsightEngine
 import VivraLogging
@@ -20,6 +21,33 @@ public struct ComposedSummary: Codable, Sendable, Equatable {
     /// The findings the summary was written from (at most
     /// `SummaryComposer.maximumFindings`).
     public let findings: [Finding]
+    /// Research notes shown beside the sentences, picked in Swift and never
+    /// seen by the model (PLAN decision 11). Empty in summaries saved before
+    /// Phase 8.
+    public let notes: [ResearchNote]
+
+    public init(draft: NarrativeDraft, generator: NarrativeGenerator, findings: [Finding], notes: [ResearchNote] = []) {
+        self.draft = draft
+        self.generator = generator
+        self.findings = findings
+        self.notes = notes
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case draft, generator, findings, notes
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        draft = try container.decode(NarrativeDraft.self, forKey: .draft)
+        generator = try container.decode(NarrativeGenerator.self, forKey: .generator)
+        findings = try container.decode([Finding].self, forKey: .findings)
+        notes = try container.decodeIfPresent([ResearchNote].self, forKey: .notes) ?? []
+    }
+
+    public func note(for findingID: String) -> ResearchNote? {
+        notes.first { $0.findingID == findingID }
+    }
 }
 
 public enum SummaryComposer {
@@ -30,12 +58,20 @@ public enum SummaryComposer {
     /// Asks the narrator for a draft and validates it. Violations get one
     /// retry with the violations listed; a second failure, a thrown error, or
     /// no narrator falls back to the template renderer.
-    public static func compose(_ report: InsightReport, narrator: (any Narrator)?) async -> ComposedSummary {
+    /// Research notes come from `evidence`, chosen by `EvidenceMatcher`; the
+    /// narrator never sees them.
+    public static func compose(
+        _ report: InsightReport,
+        narrator: (any Narrator)?,
+        evidence: EvidenceLibrary = .shipping
+    ) async -> ComposedSummary {
         let findings = Array(report.findings.prefix(maximumFindings))
+        let notes = EvidenceMatcher.notes(for: findings, kind: report.kind, library: evidence)
         let fallback = ComposedSummary(
             draft: TemplateRenderer.render(findings, kind: report.kind),
             generator: .template,
-            findings: findings
+            findings: findings,
+            notes: notes
         )
         guard let narrator, !findings.isEmpty else { return fallback }
 
@@ -45,7 +81,7 @@ public enum SummaryComposer {
                 let draft = try await narrator.draft(kind: report.kind, findings: findings, corrections: corrections)
                 let violations = NarrativeValidator.validate(draft, findings: findings)
                 if violations.isEmpty {
-                    return ComposedSummary(draft: draft, generator: .onDeviceModel, findings: findings)
+                    return ComposedSummary(draft: draft, generator: .onDeviceModel, findings: findings, notes: notes)
                 }
                 Log.narrative.event("Model draft rejected, violations", count: violations.count)
                 corrections = violations

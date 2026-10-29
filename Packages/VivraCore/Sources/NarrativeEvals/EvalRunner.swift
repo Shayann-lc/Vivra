@@ -1,3 +1,4 @@
+import Evidence
 import Foundation
 import InsightEngine
 import NarrativeCore
@@ -19,6 +20,8 @@ public struct EvalOutcome: Codable, Sendable, Equatable {
     public let attempts: [EvalAttempt]
     public let shown: NarrativeDraft
     public let generator: NarrativeGenerator
+    /// The research notes shown beside it.
+    public let notes: [ResearchNote]
     /// Scorer issues for what would have been shown.
     public let issues: [EvalIssue]
     /// Scorer issues for the model's first draft, before any retry.
@@ -136,13 +139,20 @@ func percent(_ value: Double) -> String {
 public enum EvalRunner {
     /// Runs every case `samples` times through `SummaryComposer`, exactly as
     /// the app does, and scores what it would show. With no narrator, every
-    /// summary comes from the templates.
-    public static func run(_ cases: [EvalCase], narrator: (any Narrator)?, samples: Int = 1) async -> [EvalOutcome] {
+    /// summary comes from the templates. Notes come from `evidence`; drafts
+    /// are included by default so the note policy is exercised before cards
+    /// are signed off.
+    public static func run(
+        _ cases: [EvalCase],
+        narrator: (any Narrator)?,
+        samples: Int = 1,
+        evidence: EvidenceLibrary = .includingDrafts
+    ) async -> [EvalOutcome] {
         let recorder = narrator.map(RecordingNarrator.init)
         var outcomes: [EvalOutcome] = []
         for evalCase in cases {
             for sample in 1...max(1, narrator == nil ? 1 : samples) {
-                let composed = await SummaryComposer.compose(evalCase.report, narrator: recorder)
+                let composed = await SummaryComposer.compose(evalCase.report, narrator: recorder, evidence: evidence)
                 let attempts = await recorder?.takeAttempts() ?? []
                 outcomes.append(
                     EvalOutcome(
@@ -152,7 +162,9 @@ public enum EvalRunner {
                         attempts: attempts,
                         shown: composed.draft,
                         generator: composed.generator,
-                        issues: EvalScoring.score(composed.draft, for: evalCase),
+                        notes: composed.notes,
+                        issues: EvalScoring.score(composed.draft, for: evalCase)
+                            + EvalScoring.scoreNotes(composed.notes, for: evalCase, library: evidence),
                         firstAttemptIssues: attempts.first?.draft.map { EvalScoring.score($0, for: evalCase) }
                     )
                 )

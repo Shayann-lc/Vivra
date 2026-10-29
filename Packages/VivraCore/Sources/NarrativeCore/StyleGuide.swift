@@ -27,6 +27,19 @@ public enum StyleGuide {
         "because of",
     ]
 
+    /// Words about research. Only bundled research notes, written and
+    /// reviewed by people, may use them (PLAN decision 11); in model text
+    /// they're rejected, so the model can't invent or restate a study.
+    public static let researchPhrases: [String] = [
+        "research", "researchers", "study", "studies", "studied", "scientist", "scientists", "science",
+        "scientific", "evidence", "expert", "experts", "according to", "et al", "journal", "proven", "shown to",
+        "known to", "trial", "trials", "meta-analysis",
+    ]
+
+    /// Words research notes avoid as well as the banned and causal terms:
+    /// they hint at cause.
+    public static let researchNoteAvoids: [String] = ["effect", "effects", "effective", "effectively"]
+
     /// System instructions for every model session.
     public static let modelInstructions = """
         You write short summaries of a person's own health data for a lifestyle app.
@@ -45,5 +58,6 @@ public enum StyleGuide {
         value means for health.
         - Keep a calm, neutral and encouraging tone. Address the reader as "you".
         - Write one sentence per finding.
+        - Don't mention research, studies or experts.
         """
 }

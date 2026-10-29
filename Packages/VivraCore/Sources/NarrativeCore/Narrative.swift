@@ -29,6 +29,8 @@ public enum NarrativeViolation: Sendable, Equatable, CustomStringConvertible {
     case unsupportedNumber(String, findingID: String?)
     case bannedTerm(String)
     case causalLanguage(String)
+    /// Research language, which only reviewed research notes may use.
+    case researchClaim(String)
 
     /// Written to be fed back to the model in a retry.
     public var description: String {
@@ -45,6 +47,8 @@ public enum NarrativeViolation: Sendable, Equatable, CustomStringConvertible {
             "The word \"\(term)\" is not allowed."
         case .causalLanguage(let phrase):
             "\"\(phrase)\" implies cause and effect, which is not allowed."
+        case .researchClaim(let phrase):
+            "\"\(phrase)\" mentions research. Describe only the person's own data."
         }
     }
 }
@@ -84,6 +88,9 @@ public enum NarrativeValidator {
         }
         for phrase in StyleGuide.causalPhrases where containsPhrase(phrase, in: allText) {
             violations.append(.causalLanguage(phrase))
+        }
+        for phrase in StyleGuide.researchPhrases where containsPhrase(phrase, in: allText) {
+            violations.append(.researchClaim(phrase))
         }
         return violations
     }

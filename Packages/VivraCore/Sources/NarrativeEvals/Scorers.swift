@@ -1,3 +1,4 @@
+import Evidence
 import Foundation
 import InsightEngine
 import NarrativeCore
@@ -22,6 +23,12 @@ public enum EvalScorer: String, Codable, Sendable, CaseIterable, Comparable {
     case length
     /// Each sentence speaks to the reader ("you", "your").
     case secondPerson
+    /// The model's text never mentions research, studies or experts: only
+    /// reviewed research notes may (PLAN decision 11).
+    case researchClaims
+    /// Research notes follow the policy: the right card for each pattern,
+    /// only where shown, at most three, none where the data differs.
+    case notes
 
     public static func < (lhs: EvalScorer, rhs: EvalScorer) -> Bool {
         allCases.firstIndex(of: lhs)! < allCases.firstIndex(of: rhs)!
@@ -75,8 +82,9 @@ public enum EvalScoring {
             return issues
         }
 
-        var issues = NarrativeValidator.validate(draft, findings: findings).map {
-            EvalIssue(.validator, $0.description)
+        var issues = NarrativeValidator.validate(draft, findings: findings).map { violation in
+            if case .researchClaim = violation { return EvalIssue(.researchClaims, violation.description) }
+            return EvalIssue(.validator, violation.description)
         }
         issues += structure(draft, findings: findings)
         issues += headline(draft)
@@ -94,6 +102,52 @@ public enum EvalScoring {
             }
         }
         return issues.sorted { $0.scorer < $1.scorer }
+    }
+
+    /// Checks a summary's research notes against the policy and the library
+    /// they came from.
+    public static func scoreNotes(_ notes: [ResearchNote], for evalCase: EvalCase, library: EvidenceLibrary)
+        -> [EvalIssue]
+    {
+        var issues: [EvalIssue] = []
+        if !EvidenceMatcher.showsNotes(in: evalCase.kind) && !notes.isEmpty {
+            issues.append(EvalIssue(.notes, "This kind of report never shows research notes."))
+        }
+        if notes.count > EvidenceMatcher.maximumNotes {
+            issues.append(EvalIssue(.notes, "\(notes.count) notes; at most \(EvidenceMatcher.maximumNotes) are shown."))
+        }
+        let byID = Dictionary(evalCase.findings.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        for note in notes {
+            guard let finding = byID[note.findingID] else {
+                issues.append(EvalIssue(.notes, findingID: note.findingID, "A note for a finding that isn't there."))
+                continue
+            }
+            guard let card = library.card(id: note.cardID) else {
+                issues.append(EvalIssue(.notes, findingID: note.findingID, "Unknown card \(note.cardID)."))
+                continue
+            }
+            guard let expected = EvidenceMatcher.match(finding, library: library) else {
+                issues.append(EvalIssue(.notes, findingID: note.findingID, "This finding shouldn't have a note."))
+                continue
+            }
+            if expected.cardID != card.id || expected.revision != note.revision {
+                issues.append(EvalIssue(.notes, findingID: note.findingID, "Expected card \(expected.cardID)."))
+            }
+            if note.agreement != expected.agreement {
+                issues.append(EvalIssue(.notes, findingID: note.findingID, "The agreement is wrong."))
+            }
+            if note.agreement == .differs {
+                issues.append(EvalIssue(.notes, findingID: note.findingID, "Shown although the data differs."))
+            }
+            if card.sources.isEmpty {
+                issues.append(EvalIssue(.notes, findingID: note.findingID, "The card has no citation."))
+            }
+        }
+        let expected = EvidenceMatcher.notes(for: evalCase.findings, kind: evalCase.kind, library: library)
+        for missing in expected where !notes.contains(where: { $0.findingID == missing.findingID }) {
+            issues.append(EvalIssue(.notes, findingID: missing.findingID, "Missing its research note."))
+        }
+        return issues
     }
 
     // MARK: Checks
