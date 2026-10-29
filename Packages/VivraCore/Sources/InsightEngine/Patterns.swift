@@ -60,6 +60,18 @@ public enum PatternCatalog {
     ]
 }
 
+/// One check the pattern finder made, with its finding or the reason it
+/// didn't produce one. Connections shows every check; reports only use the
+/// findings.
+struct PatternCheck: Sendable, Equatable {
+    let id: String
+    let behaviour: ConnectionBehaviour
+    let outcome: Metric
+    /// Days from the behaviour's day to the outcome's day.
+    let lag: Int
+    let status: ConnectionStatus
+}
+
 /// Finds group differences and correlations over the pattern window, with
 /// one Benjamini–Hochberg correction across all of them.
 enum PatternFinder {
@@ -74,33 +86,84 @@ enum PatternFinder {
         let pValue: Double
     }
 
-    static func findings(metrics: DailyMetrics, today: Day, calendar: DayCalendar) -> [Finding] {
-        // Complete days only, oldest first.
-        let window = (1...PatternRules.patternWindowDays).reversed().map { calendar.adding(days: -$0, to: today) }
-        var candidates = groupCandidates(metrics: metrics, window: window, today: today, calendar: calendar)
-        candidates += correlationCandidates(metrics: metrics, window: window, today: today, calendar: calendar)
-
-        let adjusted = Statistics.benjaminiHochberg(candidates.map(\.pValue))
-        return zip(candidates, adjusted).compactMap { candidate, adjustedP in
-            guard adjustedP <= PatternRules.falseDiscoveryRate else { return nil }
-            switch candidate.kind {
-            case .group(let condition, let threshold, let outcome, let with, let without):
-                return groupFinding(
-                    id: candidate.id,
-                    condition: condition,
-                    threshold: threshold,
-                    outcome: outcome,
-                    with: with,
-                    without: without,
-                    pValue: candidate.pValue,
-                    adjustedPValue: adjustedP
-                )
-            case .correlation(let pair, let pairs, let rho):
-                return correlationFinding(
-                    pair: pair, pairs: pairs, rho: rho, pValue: candidate.pValue, adjustedPValue: adjustedP)
-            }
+    /// A check before the correction: either a candidate for it, or already
+    /// dropped by a gate.
+    private struct Draft {
+        enum State {
+            case candidate(Candidate)
+            case dropped(ConnectionStatus)
         }
-        .sorted(by: byConfidence)
+
+        let id: String
+        let behaviour: ConnectionBehaviour
+        let outcome: Metric
+        let lag: Int
+        let state: State
+    }
+
+    static func findings(metrics: DailyMetrics, today: Day, calendar: DayCalendar) -> [Finding] {
+        checks(metrics: metrics, today: today, calendar: calendar)
+            .compactMap { check in
+                if case .found(let finding) = check.status { return finding }
+                return nil
+            }
+            .sorted(by: byConfidence)
+    }
+
+    /// Every check in a fixed order: the two group differences, then the
+    /// catalogue's correlations.
+    static func checks(metrics: DailyMetrics, today: Day, calendar: DayCalendar) -> [PatternCheck] {
+        let window = window(today: today, calendar: calendar)
+        let drafts =
+            groupDrafts(metrics: metrics, window: window, today: today, calendar: calendar)
+            + correlationDrafts(metrics: metrics, window: window, today: today, calendar: calendar)
+
+        var candidates: [Candidate] = []
+        for draft in drafts {
+            if case .candidate(let candidate) = draft.state { candidates.append(candidate) }
+        }
+        let adjusted = Statistics.benjaminiHochberg(candidates.map(\.pValue))
+        let adjustedByID = Dictionary(uniqueKeysWithValues: zip(candidates.map(\.id), adjusted))
+
+        return drafts.map { draft in
+            let status: ConnectionStatus
+            switch draft.state {
+            case .dropped(let reason):
+                status = reason
+            case .candidate(let candidate):
+                status = evaluate(candidate, adjustedPValue: adjustedByID[candidate.id]!)
+            }
+            return PatternCheck(
+                id: draft.id, behaviour: draft.behaviour, outcome: draft.outcome, lag: draft.lag, status: status)
+        }
+    }
+
+    /// Complete days only, oldest first.
+    static func window(today: Day, calendar: DayCalendar) -> [Day] {
+        (1...PatternRules.patternWindowDays).reversed().map { calendar.adding(days: -$0, to: today) }
+    }
+
+    private static func evaluate(_ candidate: Candidate, adjustedPValue: Double) -> ConnectionStatus {
+        switch candidate.kind {
+        case .group(let condition, let threshold, let outcome, let with, let without):
+            guard adjustedPValue <= PatternRules.falseDiscoveryRate else {
+                return .noClearPattern(days: with.count + without.count)
+            }
+            return groupStatus(
+                id: candidate.id,
+                condition: condition,
+                threshold: threshold,
+                outcome: outcome,
+                with: with,
+                without: without,
+                pValue: candidate.pValue,
+                adjustedPValue: adjustedPValue
+            )
+        case .correlation(let pair, let pairs, let rho):
+            guard adjustedPValue <= PatternRules.falseDiscoveryRate else { return .noClearPattern(days: pairs.count) }
+            return correlationStatus(
+                pair: pair, pairs: pairs, rho: rho, pValue: candidate.pValue, adjustedPValue: adjustedPValue)
+        }
     }
 
     static func byConfidence(_ lhs: Finding, _ rhs: Finding) -> Bool {
@@ -109,80 +172,128 @@ enum PatternFinder {
         return l != r ? l > r : lhs.id < rhs.id
     }
 
+    /// Whether the metric has a value on any of the days.
+    private static func isRecorded(_ metric: Metric, on days: [Day], metrics: DailyMetrics) -> Bool {
+        days.contains { metrics.value(metric, on: $0) != nil }
+    }
+
     // MARK: Group differences
 
-    private static func groupCandidates(metrics: DailyMetrics, window: [Day], today: Day, calendar: DayCalendar)
-        -> [Candidate]
-    {
-        var candidates: [Candidate] = []
+    static let shorterSleepID = "pattern.shorterSleep.restingHeartRate"
+    static let workoutDayID = "pattern.workoutDay.sleepDuration"
 
-        // Shorter-than-usual night → resting heart rate that day.
-        let sleepPairs = window.compactMap { day -> (sleep: Double, outcome: Double)? in
+    /// Each night's sleep with the resting heart rate the same day.
+    static func shorterSleepDays(metrics: DailyMetrics, window: [Day]) -> [(day: Day, sleep: Double, outcome: Double)] {
+        window.compactMap { day in
             guard let sleep = metrics.value(.sleepDuration, on: day),
                 let outcome = metrics.value(.restingHeartRate, on: day)
             else { return nil }
-            return (sleep, outcome)
+            return (day, sleep, outcome)
+        }
+    }
+
+    /// Each day's workout minutes with the sleep the night after, while that
+    /// night is complete.
+    static func workoutDays(metrics: DailyMetrics, window: [Day], today: Day, calendar: DayCalendar) -> [(
+        day: Day, minutes: Double, sleep: Double
+    )] {
+        window.compactMap { day in
+            let nextDay = calendar.adding(days: 1, to: day)
+            guard nextDay < today, let sleep = metrics.value(.sleepDuration, on: nextDay) else { return nil }
+            return (day, metrics.value(.workoutMinutes, on: day) ?? 0, sleep)
+        }
+    }
+
+    private static func groupDrafts(metrics: DailyMetrics, window: [Day], today: Day, calendar: DayCalendar)
+        -> [Draft]
+    {
+        var drafts: [Draft] = []
+
+        // Shorter-than-usual night → resting heart rate that day.
+        let sleepPairs = shorterSleepDays(metrics: metrics, window: window)
+        let shorterSleep = { (state: Draft.State) in
+            Draft(
+                id: shorterSleepID, behaviour: .condition(.shorterSleep), outcome: .restingHeartRate, lag: 0,
+                state: state)
         }
         if let medianSleep = Statistics.median(sleepPairs.map(\.sleep)) {
-            candidates += groupCandidate(
-                id: "pattern.shorterSleep.restingHeartRate",
-                condition: .shorterSleep,
-                threshold: medianSleep,
-                outcome: .restingHeartRate,
-                with: sleepPairs.filter { $0.sleep < medianSleep }.map(\.outcome),
-                without: sleepPairs.filter { $0.sleep >= medianSleep }.map(\.outcome)
-            )
+            drafts.append(
+                shorterSleep(
+                    groupState(
+                        id: shorterSleepID,
+                        condition: .shorterSleep,
+                        threshold: medianSleep,
+                        outcome: .restingHeartRate,
+                        with: sleepPairs.filter { $0.sleep < medianSleep }.map(\.outcome),
+                        without: sleepPairs.filter { $0.sleep >= medianSleep }.map(\.outcome)
+                    )))
+        } else if !isRecorded(.sleepDuration, on: window, metrics: metrics) {
+            drafts.append(shorterSleep(.dropped(.notRecorded(.sleepDuration))))
+        } else if !isRecorded(.restingHeartRate, on: window, metrics: metrics) {
+            drafts.append(shorterSleep(.dropped(.notRecorded(.restingHeartRate))))
+        } else {
+            drafts.append(shorterSleep(.dropped(.needsMoreDays(have: 0, need: PatternRules.minimumPairedDays))))
         }
 
         // Workout day → sleep that night (the night ending the next morning).
+        let workoutDay = { (state: Draft.State) in
+            Draft(id: workoutDayID, behaviour: .condition(.workoutDay), outcome: .sleepDuration, lag: 1, state: state)
+        }
         if metrics.hasData(.workoutMinutes) {
             var with: [Double] = []
             var without: [Double] = []
-            for day in window {
-                let nextDay = calendar.adding(days: 1, to: day)
-                guard nextDay < today, let sleep = metrics.value(.sleepDuration, on: nextDay) else { continue }
-                let minutes = metrics.value(.workoutMinutes, on: day) ?? 0
-                if minutes >= PatternRules.workoutDayMinutes {
-                    with.append(sleep)
-                } else if minutes == 0 {
-                    without.append(sleep)
+            for entry in workoutDays(metrics: metrics, window: window, today: today, calendar: calendar) {
+                if entry.minutes >= PatternRules.workoutDayMinutes {
+                    with.append(entry.sleep)
+                } else if entry.minutes == 0 {
+                    without.append(entry.sleep)
                 }
             }
-            candidates += groupCandidate(
-                id: "pattern.workoutDay.sleepDuration",
-                condition: .workoutDay,
-                threshold: PatternRules.workoutDayMinutes,
-                outcome: .sleepDuration,
-                with: with,
-                without: without
-            )
+            if with.isEmpty && without.isEmpty && !isRecorded(.sleepDuration, on: window, metrics: metrics) {
+                drafts.append(workoutDay(.dropped(.notRecorded(.sleepDuration))))
+            } else {
+                drafts.append(
+                    workoutDay(
+                        groupState(
+                            id: workoutDayID,
+                            condition: .workoutDay,
+                            threshold: PatternRules.workoutDayMinutes,
+                            outcome: .sleepDuration,
+                            with: with,
+                            without: without
+                        )))
+            }
+        } else {
+            drafts.append(workoutDay(.dropped(.notRecorded(.workoutMinutes))))
         }
-        return candidates
+        return drafts
     }
 
-    private static func groupCandidate(
+    private static func groupState(
         id: String,
         condition: Condition,
         threshold: Double,
         outcome: Metric,
         with: [Double],
         without: [Double]
-    ) -> [Candidate] {
-        guard with.count >= PatternRules.minimumDaysPerGroup,
-            without.count >= PatternRules.minimumDaysPerGroup,
-            with.count + without.count >= PatternRules.minimumPairedDays
-        else { return [] }
-        return [
+    ) -> Draft.State {
+        let total = with.count + without.count
+        guard total >= PatternRules.minimumPairedDays else {
+            return .dropped(.needsMoreDays(have: total, need: PatternRules.minimumPairedDays))
+        }
+        guard with.count >= PatternRules.minimumDaysPerGroup, without.count >= PatternRules.minimumDaysPerGroup else {
+            return .dropped(.notEnoughVariety(days: total))
+        }
+        return .candidate(
             Candidate(
                 id: id,
                 kind: .group(
                     condition: condition, threshold: threshold, outcome: outcome, with: with, without: without),
                 pValue: Statistics.mannWhitneyPValue(with, without)
-            )
-        ]
+            ))
     }
 
-    private static func groupFinding(
+    private static func groupStatus(
         id: String,
         condition: Condition,
         threshold: Double,
@@ -191,17 +302,18 @@ enum PatternFinder {
         without: [Double],
         pValue: Double,
         adjustedPValue: Double
-    ) -> Finding? {
+    ) -> ConnectionStatus {
+        let days = with.count + without.count
         let withMedian = Statistics.median(with)!
         let withoutMedian = Statistics.median(without)!
-        guard abs(withMedian - withoutMedian) >= outcome.minimumEffect else { return nil }
+        guard abs(withMedian - withoutMedian) >= outcome.minimumEffect else { return .noClearPattern(days: days) }
         let interval = Statistics.bootstrapDifferenceInterval(
             with,
             without,
             resamples: PatternRules.resamples,
             seed: PatternRules.seed
         )
-        guard interval.lowerBound > 0 || interval.upperBound < 0 else { return nil }
+        guard interval.lowerBound > 0 || interval.upperBound < 0 else { return .noClearPattern(days: days) }
 
         let smallerGroup = min(with.count, without.count)
         let confidence: Confidence =
@@ -226,48 +338,79 @@ enum PatternFinder {
             adjustedPValue: adjustedPValue,
             confidence: confidence
         )
-        return Finding(id: id, detail: .groupDifference(difference))
+        return .found(Finding(id: id, detail: .groupDifference(difference)))
     }
 
     // MARK: Correlations
 
-    private static func correlationCandidates(
+    /// X on each window day with Y on the day `lag` later, while that day is
+    /// complete.
+    static func correlationDays(
+        _ pair: PatternCatalog.Pair,
         metrics: DailyMetrics,
         window: [Day],
         today: Day,
         calendar: DayCalendar
-    ) -> [Candidate] {
-        PatternCatalog.correlations.compactMap { pair in
-            let pairs = window.compactMap { day -> (x: Double, y: Double)? in
-                let outcomeDay = calendar.adding(days: pair.lag, to: day)
-                guard outcomeDay < today,
-                    let x = metrics.value(pair.x, on: day),
-                    let y = metrics.value(pair.y, on: outcomeDay)
-                else { return nil }
-                return (x, y)
-            }
-            guard pairs.count >= PatternRules.minimumPairedDays,
-                let rho = Statistics.spearman(pairs.map(\.x), pairs.map(\.y)),
-                abs(rho) >= PatternRules.minimumRho
+    ) -> [(day: Day, x: Double, y: Double)] {
+        window.compactMap { day in
+            let outcomeDay = calendar.adding(days: pair.lag, to: day)
+            guard outcomeDay < today,
+                let x = metrics.value(pair.x, on: day),
+                let y = metrics.value(pair.y, on: outcomeDay)
             else { return nil }
-            let inference = Statistics.spearmanInference(rho: rho, n: pairs.count)
-            return Candidate(id: pair.id, kind: .correlation(pair, pairs: pairs, rho: rho), pValue: inference.pValue)
+            return (day, x, y)
         }
     }
 
-    private static func correlationFinding(
+    private static func correlationDrafts(
+        metrics: DailyMetrics,
+        window: [Day],
+        today: Day,
+        calendar: DayCalendar
+    ) -> [Draft] {
+        PatternCatalog.correlations.map { pair in
+            let draft = { (state: Draft.State) in
+                Draft(id: pair.id, behaviour: .metric(pair.x), outcome: pair.y, lag: pair.lag, state: state)
+            }
+            let pairs = correlationDays(pair, metrics: metrics, window: window, today: today, calendar: calendar)
+                .map { (x: $0.x, y: $0.y) }
+            guard pairs.count >= PatternRules.minimumPairedDays else {
+                if !isRecorded(pair.x, on: window, metrics: metrics) {
+                    return draft(.dropped(.notRecorded(pair.x)))
+                }
+                let outcomeDays = window.map { calendar.adding(days: pair.lag, to: $0) }.filter { $0 < today }
+                if !isRecorded(pair.y, on: outcomeDays, metrics: metrics) {
+                    return draft(.dropped(.notRecorded(pair.y)))
+                }
+                return draft(.dropped(.needsMoreDays(have: pairs.count, need: PatternRules.minimumPairedDays)))
+            }
+            guard let rho = Statistics.spearman(pairs.map(\.x), pairs.map(\.y)) else {
+                return draft(.dropped(.notEnoughVariety(days: pairs.count)))
+            }
+            guard abs(rho) >= PatternRules.minimumRho else {
+                return draft(.dropped(.noClearPattern(days: pairs.count)))
+            }
+            let inference = Statistics.spearmanInference(rho: rho, n: pairs.count)
+            return draft(
+                .candidate(
+                    Candidate(
+                        id: pair.id, kind: .correlation(pair, pairs: pairs, rho: rho), pValue: inference.pValue)))
+        }
+    }
+
+    private static func correlationStatus(
         pair: PatternCatalog.Pair,
         pairs: [(x: Double, y: Double)],
         rho: Double,
         pValue: Double,
         adjustedPValue: Double
-    ) -> Finding? {
+    ) -> ConnectionStatus {
         let interval = Statistics.spearmanInference(rho: rho, n: pairs.count).interval
-        guard interval.lowerBound > 0 || interval.upperBound < 0 else { return nil }
-        guard let groups = concreteGroups(pairs) else { return nil }
+        guard interval.lowerBound > 0 || interval.upperBound < 0 else { return .noClearPattern(days: pairs.count) }
+        guard let groups = concreteGroups(pairs) else { return .notEnoughVariety(days: pairs.count) }
         let lowMedian = Statistics.median(groups.low.map(\.y))!
         let highMedian = Statistics.median(groups.high.map(\.y))!
-        guard abs(highMedian - lowMedian) >= pair.y.minimumEffect else { return nil }
+        guard abs(highMedian - lowMedian) >= pair.y.minimumEffect else { return .noClearPattern(days: pairs.count) }
 
         let stable = stability(pairs, rho: rho)
         let confidence: Confidence =
@@ -297,7 +440,7 @@ enum PatternFinder {
             lowGroupDays: groups.low.count,
             highGroupDays: groups.high.count
         )
-        return Finding(id: pair.id, detail: .correlation(correlation))
+        return .found(Finding(id: pair.id, detail: .correlation(correlation)))
     }
 
     /// Splits pairs into low and high X groups for a concrete comparison:

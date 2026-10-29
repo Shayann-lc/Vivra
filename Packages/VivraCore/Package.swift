@@ -39,7 +39,7 @@ let package = Package(
         .testTarget(name: "VivraLoggingTests", dependencies: ["VivraLogging"]),
         .testTarget(name: "VivraModelTests", dependencies: ["VivraModel"]),
         .testTarget(name: "SyncCoreTests", dependencies: ["SyncCore", "VivraModel"]),
-        .testTarget(name: "InsightEngineTests", dependencies: ["InsightEngine", "VivraModel"]),
+        .testTarget(name: "InsightEngineTests", dependencies: ["InsightEngine", "SyncCore", "VivraModel"]),
         .testTarget(name: "NarrativeCoreTests", dependencies: ["NarrativeCore", "InsightEngine", "VivraModel"]),
     ],
     swiftLanguageModes: [.v6]

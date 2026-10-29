@@ -76,6 +76,18 @@ public enum Metric: String, Codable, Sendable, CaseIterable {
         }
     }
 
+    /// A daily total that keeps adding up through the day, so today's value
+    /// isn't complete until the day ends.
+    var addsUpThroughTheDay: Bool {
+        switch self {
+        case .steps, .activeEnergy, .exerciseMinutes, .distance, .standHours, .mindfulMinutes, .dietaryEnergy,
+            .protein, .carbohydrates, .fat, .water, .caffeine, .alcohol, .workoutMinutes, .workoutCount:
+            true
+        default:
+            false
+        }
+    }
+
     /// Differences, trends and anomalies smaller than this aren't reported.
     var minimumEffect: Double {
         switch self {
