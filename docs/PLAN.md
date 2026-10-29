@@ -1,6 +1,6 @@
 # Vivra — Architecture and Phased Plan
 
-Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–6 are done in code, with CI green on Xcode 26 and 27. The device checks for Phases 1–6 (`docs/DEVICE_TEST.md`), the live eval run on the owner's Mac (`evals/README.md`) and the App Store decisions (`docs/APP_STORE.md`) are pending with the owner.
+Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–6 are done in code, with CI green on Xcode 26 and 27. Phase 7 (Connections) is approved and in progress. The device checks for Phases 1–6 (`docs/DEVICE_TEST.md`), the live eval run on the owner's Mac (`evals/README.md`) and the App Store decisions (`docs/APP_STORE.md`) are pending with the owner.
 
 ## 1. Decisions already made
 
@@ -422,6 +422,96 @@ Pattern lists and the Today screen use templates only.
 6. **Live evals:** the live runner builds in CI, runs on the owner's Mac, and writes
    the JSON and Markdown report with the thresholds above.
 7. **CI:** green on Xcode 26 and Xcode 27.
+
+### Phase 7 — Connections: habits next to outcomes
+
+Status: **approved and in progress** (owner, after the Phase 6 report). The owner
+asked for a holistic view where people can easily see how daily behaviours go with
+outcomes, instead of walls of text, and looked to Whoop for ideas. The research and
+design are in the proposal the owner approved ("Connections"); the owner accepted
+every recommended answer below.
+
+**What it is.** A view that answers "what goes with what?" in real units. Each
+outcome (sleep, resting heart rate, HRV, mood, energy, stress) is a section. Each
+behaviour Vivra checks against it is a row on the outcome's shared axis, with the
+person's usual range shaded behind. A found row is a two-dot comparison: the
+outcome's median on days with less or none of the behaviour (hollow dot) and on
+days with more or some (filled dot), both values printed, with both day counts and
+the confidence. Rows that were checked but showed nothing say so ("no clear
+pattern", "not enough variety", "needs more days (6 of 14)", "not recorded").
+Tapping a found row opens the days behind it. From Whoop it takes the ranked list
+of behaviours against one outcome, the tap-for-detail, a stated unlock threshold and
+the confounding caveat; it leaves out scores, percentages and good/bad colours.
+
+**Decisions (owner, all as recommended)**
+- **D1 Placement:** Insights gets `Connections | Summaries` at the top, defaulting to
+  Connections. Summaries is the current Insights screen, unchanged. The Daily
+  Summary widget's link opens Insights on Summaries.
+- **D2:** "No clear pattern", "not enough variety", "needs more days" and "not
+  recorded" rows are shown, so people can see what was checked. They never show
+  medians or ρ, so noise isn't presented as a near-finding.
+- **D3 Today:** (B1) each *At a glance* row gains a thin usual-range bar with a dot for
+  the current value; VoiceOver adds "within", "above" or "below your usual range".
+  (B2) When *Worth noticing* is a pattern, it shows the same two-dot comparison with
+  its labels and values and links to that connection's detail; the template sentence
+  stays available to VoiceOver.
+- **D4:** Opening Connections counts towards the Pattern Spotter achievement, like
+  opening Patterns.
+- **D5:** The pattern catalogue stays as it is (15 correlations, 2 group
+  differences). Widening it changes the false-discovery correction for every pattern
+  and is a later phase.
+- **D6:** No composite or score-like element.
+- **D7:** Sample data is unchanged (the evals are built from it).
+
+**Engine (VivraCore, Linux-tested)**
+- `PatternFinder` reports, for every check, either its finding or why it was
+  dropped. Which findings it emits, and their values, don't change.
+- `ConnectionBoard`: one row per check (17), each with its behaviour, outcome, lag,
+  status (`found`, `noClearPattern`, `notEnoughVariety`, `needsMoreDays`,
+  `notRecorded`), the most recent behaviour value and which group it falls in, and
+  a sort key (difference relative to the usual range, used only for ordering). It
+  also carries each outcome's usual range over the window.
+- `ConnectionDays`: the paired days behind a found row, each in the less, more or
+  in-between group, plus the last 28 days of both metrics lined up by lag.
+- No model, no new statistics: it reuses the existing tests, gates and correction.
+
+**Wording.** `ConnectionLabels` in NarrativeCore: names, timing captions ("night
+after", "next day", "same day", "day after"), group labels, values, status lines,
+summary line and the VoiceOver sentence for each row. Templates only; every number
+goes through `FindingFormatter`.
+
+**App.** `ConnectionsView` (by outcome and by habit), `ConnectionDetailView` (numbers,
+each day as a dot in its group's lane, the last 28 days, the template sentence, how
+it was worked out, links to both metrics), empty and low-data states. SwiftUI and
+Swift Charts only. Group identity is carried by shape and label, never colour alone.
+
+**Definition of done**
+1. **Engine:** `ConnectionBoard` has exactly one row for each of the 15 correlations
+   and 2 group differences. Its found rows equal the pattern findings in
+   `PatternList` (same IDs and values) on the sample data and on three more seeded
+   datasets. Each status has a test that reaches it. The latest-value marker is
+   tested for a lag-0 and a lag-1 check with a fixed clock and calendar.
+   `ConnectionDays` group medians and counts equal the finding's exactly. The order
+   is deterministic.
+2. **No change to existing results:** existing pattern, report and NarrativeEvals
+   tests pass unchanged.
+3. **Wording:** every `ConnectionLabels` string, for every status and split, passes
+   the `StyleGuide` banned-term and causal-phrase checks, and every number in them
+   comes from `FindingFormatter`.
+4. **App:** Insights shows `Connections | Summaries`, with Summaries unchanged.
+   Connections has both views, the detail and the empty states. An app-hosted test
+   checks that the widget's link opens Insights on Summaries.
+5. **Today (D3):** glance rows show the usual-range bar with the VoiceOver wording;
+   *Worth noticing* shows the two-dot comparison for a pattern and links to its
+   detail.
+6. **Accessibility:** the UI test screenshots and audits Connections, the by-habit
+   view and a connection's detail, and audits Connections at an accessibility text
+   size. Every chart has an accessibility description.
+7. **No model:** Connections makes no `SummaryComposer` or Foundation Models call.
+8. **Docs:** this section, a UX_RESEARCH addendum, Phase 7 device steps, a
+   performance target (board under 150 ms for 90 days on a recent iPhone, checked
+   on device) and CLAUDE.md.
+9. **CI:** green on Xcode 26 and Xcode 27.
 
 ## 8. Strava — what the terms say and my recommendation
 
