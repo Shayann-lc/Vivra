@@ -1,4 +1,5 @@
 import Charts
+import Evidence
 import InsightEngine
 import NarrativeCore
 import SwiftUI
@@ -38,6 +39,16 @@ struct ConnectionDetailView: View {
 
                 Section("In Words") {
                     Text(TemplateRenderer.sentence(for: finding))
+                }
+
+                if let research = model.research(for: finding) {
+                    Section {
+                        ResearchNoteView(card: research.card, differs: research.note.agreement == .differs)
+                    } header: {
+                        Text("Research")
+                    } footer: {
+                        Text(EvidenceText.footer)
+                    }
                 }
 
                 Section {

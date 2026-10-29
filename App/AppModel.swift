@@ -1,3 +1,4 @@
+import Evidence
 import Foundation
 import Gamification
 import HealthSync
@@ -445,6 +446,31 @@ final class AppModel {
         )
     }
 
+    /// Research notes this build may show (PLAN decision 11): signed-off
+    /// cards only in Release; drafts too in Debug, labelled as drafts, so the
+    /// owner can review them in context.
+    static var evidence: EvidenceLibrary {
+        #if DEBUG
+            .includingDrafts
+        #else
+            .shipping
+        #endif
+    }
+
+    /// The research note for a pattern's own detail, including when the
+    /// person's data goes the other way.
+    func research(for finding: Finding) -> (note: ResearchNote, card: EvidenceCard)? {
+        guard let note = EvidenceMatcher.match(finding, library: Self.evidence),
+            let card = Self.evidence.card(id: note.cardID)
+        else { return nil }
+        return (note, card)
+    }
+
+    /// Background research for a metric's detail screen.
+    func researchContext(for metric: Metric) -> [EvidenceCard] {
+        EvidenceMatcher.context(for: metric, library: Self.evidence)
+    }
+
     /// Links from widgets, controls and shortcuts. The Daily Summary widget
     /// shows today's check-in, so it opens Insights on Summaries.
     func open(_ url: URL) {
@@ -489,7 +515,7 @@ final class AppModel {
                 }
             }
             let summary = await Log.narrative.measure("Compose summary") {
-                await SummaryComposer.compose(report, narrator: environment.makeNarrator())
+                await SummaryComposer.compose(report, narrator: environment.makeNarrator(), evidence: Self.evidence)
             }
             let stored = StoredReport(
                 kind: kind,

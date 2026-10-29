@@ -313,3 +313,35 @@ Use a phone with at least a few weeks of Health data and some Quick Log entries.
 
 1. Follow `docs/PERFORMANCE.md` §6.
 
+# Phase 8 device steps
+
+Run from Xcode (a Debug build), which shows draft research notes labelled "Draft, not
+yet reviewed". A Release build (TestFlight or the App Store) shows only cards signed
+off in `docs/EVIDENCE.md`.
+
+## A. Research notes in summaries
+
+1. Insights › Summaries › Create a New Weekly Summary. ✅ Under some pattern
+   sentences there's a "Research · groups of people" note, at most three in the
+   summary, with a citation and a strength label such as "Many studies agree". The
+   section footer says research notes describe groups of people.
+2. Tap a note. ✅ The Sources sheet shows the statement, who was studied, caveats, how
+   much research there is, and each source with a working DOI link and its licence.
+3. Tap "Why do I feel off today?". ✅ No research notes.
+4. ✅ Today and the Daily Summary widget show no research notes.
+
+## B. Connections and metric detail
+
+1. Open a connection in Insights › Connections. ✅ If a card matches, a "Research"
+   section shows it. If your data goes the other way to the research, it says so and
+   that people vary.
+2. Open Heart rate variability from Today. ✅ "What Research Says" shows two
+   background notes.
+
+## C. Reviewing cards
+
+1. Work through the sign-off checklist and the twenty read-through pairs in
+   `docs/EVIDENCE.md`.
+2. For each card you approve, set it to `ready` as described there. ✅ A Release build
+   then shows it.
+

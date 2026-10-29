@@ -58,6 +58,7 @@ final class VivraUITests: XCTestCase {
                 _ = XCTWaiter.wait(
                     for: [XCTestExpectation(description: "Let the summary finish appearing")], timeout: 2)
                 audit(app, screenshot: "07b Weekly summary")
+                researchSources(app)
             default:
                 break
             }
@@ -131,6 +132,18 @@ final class VivraUITests: XCTestCase {
     }
 
     /// Onboarding, audited and kept as screenshots unless `audited` is off.
+    /// A research note under the weekly summary, and its Sources sheet
+    /// (PLAN Phase 8).
+    private func researchSources(_ app: XCUIApplication) {
+        let note = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Research'")).firstMatch
+        reveal(note, in: app)
+        let sources = app.navigationBars["Sources"]
+        tap(note, until: sources, auditing: nil, screenshot: nil)
+        audit(app, screenshot: "07f Research sources")
+        app.buttons["Done"].tap()
+        XCTAssertTrue(sources.waitForNonExistence(timeout: timeout), "Sources sheet closed")
+    }
+
     private func completeOnboarding(_ app: XCUIApplication, audited: Bool) {
         let auditing = audited ? app : nil
         tap(app.buttons["Continue"], until: app.buttons["I Understand"], auditing: auditing, screenshot: "01 Welcome")

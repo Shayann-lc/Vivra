@@ -235,6 +235,27 @@ import Testing
         #expect(harness.model.connectionDays(finding)?.pairs.isEmpty == false)
     }
 
+    /// Research notes are picked in Swift and saved with the summary
+    /// (PLAN Phase 8). Debug builds, like these tests, include draft cards.
+    @Test func summariesCarryResearchNotesButFeelingOffDoesNot() async throws {
+        let harness = Self.makeHarness(sampleData: true)
+        defer { harness.cleanUp() }
+        await harness.model.start()
+        await harness.model.completeOnboarding()
+
+        await harness.model.createReport(.weekly)
+        let weekly = try #require(harness.model.latestReport(.weekly)?.summary)
+        #expect(!weekly.notes.isEmpty)
+        #expect(weekly.notes.count <= 3)
+        for note in weekly.notes {
+            #expect(weekly.findings.contains { $0.id == note.findingID })
+            #expect(AppModel.evidence.card(id: note.cardID) != nil)
+        }
+
+        await harness.model.createReport(.feelingOff)
+        #expect(harness.model.latestReport(.feelingOff)?.summary.notes.isEmpty == true)
+    }
+
     /// The Daily Summary widget shows today's check-in, so its link opens
     /// Insights on Summaries rather than Connections.
     @Test func theWidgetLinkOpensSummaries() {

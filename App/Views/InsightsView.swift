@@ -1,3 +1,4 @@
+import Evidence
 import InsightEngine
 import NarrativeCore
 import SwiftUI
@@ -171,11 +172,16 @@ struct ReportSection: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                if let note = summary.note(for: bullet.findingID), let display = ResearchNoteView.display(note) {
+                    ResearchNoteView(card: display.card)
+                }
             }
         } header: {
             Text(header)
         } footer: {
-            Text(generatorNote(summary.generator))
+            Text(
+                summary.notes.isEmpty
+                    ? generatorNote(summary.generator) : "\(generatorNote(summary.generator)) \(EvidenceText.footer)")
         }
     }
 

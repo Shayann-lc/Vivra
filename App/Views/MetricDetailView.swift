@@ -1,4 +1,5 @@
 import Charts
+import Evidence
 import InsightEngine
 import NarrativeCore
 import SwiftUI
@@ -62,6 +63,19 @@ struct MetricDetailView: View {
             }
 
             ReferenceSection(model: model, metric: metric)
+
+            let research = model.researchContext(for: metric)
+            if !research.isEmpty {
+                Section {
+                    ForEach(research) { card in
+                        ResearchNoteView(card: card)
+                    }
+                } header: {
+                    Text("What Research Says")
+                } footer: {
+                    Text(EvidenceText.footer)
+                }
+            }
 
             Section("About this measurement") {
                 Text(MetricDescriptions.description(metric))

@@ -54,6 +54,11 @@ Relevant App Review Guidelines: 2.5.1, 5.1.1, 5.1.2 and 5.1.3.
   Health recorded them and are never interpreted.
 - **Reference norms** cite their primary sources and licences (`docs/NORMS.md`). The
   App Store build contains no FRIEND data (PLAN decision 10).
+- **Research notes (Phase 8)** are short summaries of published studies about groups of
+  people, written and reviewed by people, with full citations (`docs/EVIDENCE.md`).
+  They never interpret the person's data, never give advice, and are never written by
+  the model. Clinical topics (depression, illness detection) are excluded. Only cards
+  the owner has signed off appear in the App Store build.
 
 ## 3. Review notes (paste into App Review Information)
 
@@ -74,6 +79,11 @@ Relevant App Review Guidelines: 2.5.1, 5.1.1, 5.1.2 and 5.1.3.
 >
 > Settings › Export All Data shares a zip of the user's data; Settings › Delete All
 > Vivra Data removes everything, including the encryption key.
+>
+> Under some patterns, Insights shows a "Research · groups of people" note: a
+> reviewed summary of a published study, with its citation, population and caveats
+> one tap away. These notes are written by people, never by the on-device model, and
+> they describe groups of people, not the user.
 >
 > Vivra is not a medical device and doesn't give medical advice.
 
@@ -138,5 +148,6 @@ environment which crypto provider SQLCipher.swift 4.19.0 links on Apple platform
 - [ ] Privacy policy (`docs/PRIVACY_POLICY.md`): date and contact filled in, hosted,
   URL entered in App Store Connect.
 - [x] Export-compliance answer and plist key.
-- [ ] The device steps in `docs/DEVICE_TEST.md` (Phases 1–7) pass.
+- [ ] The device steps in `docs/DEVICE_TEST.md` (Phases 1–8) pass.
+- [ ] Research notes to ship are signed off in `docs/EVIDENCE.md` (status `ready`).
 - [ ] The profiling checklist in `docs/PERFORMANCE.md` has been run.
