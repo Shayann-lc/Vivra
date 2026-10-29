@@ -1,6 +1,6 @@
 # Vivra — Architecture and Phased Plan
 
-Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–7 are done in code, with CI green on Xcode 26 and 27. Phase 8 (research notes) is approved and in progress. The device checks for Phases 1–7 (`docs/DEVICE_TEST.md`), the live eval run on the owner's Mac (`evals/README.md`) and the App Store decisions (`docs/APP_STORE.md`) are pending with the owner.
+Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–8 are done in code, with CI green on Xcode 26 and 27. The Phase 8 research notes are drafts until the owner signs them off. The device checks for Phases 1–8 (`docs/DEVICE_TEST.md`), the research-note sign-off (`docs/EVIDENCE.md`), the live eval run on the owner's Mac (`evals/README.md`) and the App Store decisions (`docs/APP_STORE.md`) are pending with the owner.
 
 ## 1. Decisions already made
 
@@ -516,7 +516,7 @@ Swift Charts only. Group identity is carried by shape and label, never colour al
 
 ### Phase 8 — Research notes
 
-Status: **approved and in progress** (owner, after the Phase 7 report). The owner asked
+Status: **done in code**, CI green on Xcode 26 and 27 (approved by the owner after the Phase 7 report). All 23 shown cards are drafts: Release builds show none until the owner signs cards off in `docs/EVIDENCE.md`. The owner asked
 how to distil scientific articles into knowledge the on-device summaries can use; the
 research and design are in the approved proposal ("research notes"), and the owner
 accepted every recommended answer below.

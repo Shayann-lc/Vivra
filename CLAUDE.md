@@ -5,11 +5,12 @@ and the definition of done for each phase.
 
 ## Current phase
 
-**Phase 8** (research notes: reviewed evidence cards shown beside summaries) is
-approved and in progress; its definition of done is in PLAN §7. Phases 0–7 are
-done. The device checks in `docs/DEVICE_TEST.md`, the live eval run on a Mac
-(`evals/README.md`) and the decisions in `docs/APP_STORE.md` are with the owner.
-Anything beyond Phase 8 needs the owner's approval and a definition of done first.
+Phases 0–8 are done in code, with CI green on Xcode 26 and 27 (Phase 8:
+research notes; PLAN §7). The research cards are drafts until the owner signs
+them off in `docs/EVIDENCE.md`. The device checks in `docs/DEVICE_TEST.md`, the
+live eval run on a Mac (`evals/README.md`) and the decisions in
+`docs/APP_STORE.md` are with the owner. There is no current phase: anything new
+needs the owner's approval and a definition of done first.
 
 ## Hard rules
 
