@@ -11,19 +11,58 @@ struct ConnectionRoute: Hashable {
 /// `Connections | Summaries` at the top of both halves of Insights.
 struct InsightsSectionPicker: View {
     @Binding var selection: InsightsSection
+
+    var body: some View {
+        ChoiceControl(
+            title: String(localized: "Insights"),
+            options: [
+                .init(value: InsightsSection.connections, label: String(localized: "Connections")),
+                .init(value: .summaries, label: String(localized: "Summaries")),
+            ],
+            selection: $selection
+        )
+    }
+}
+
+/// A segmented control, or at the largest text sizes (where segments don't
+/// grow) one button row per option with a checkmark, which wraps like any
+/// other row.
+struct ChoiceControl<Value: Hashable>: View {
+    struct Option: Identifiable {
+        let value: Value
+        let label: String
+        var id: Value { value }
+    }
+
+    let title: String
+    let options: [Option]
+    @Binding var selection: Value
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        let picker = Picker("Insights", selection: $selection) {
-            Text("Connections").tag(InsightsSection.connections)
-            Text("Summaries").tag(InsightsSection.summaries)
-        }
-        // Segmented controls don't grow with the largest text sizes, and a
-        // picker's title can clip; rows with a checkmark can't.
         if typeSize.isAccessibilitySize {
-            picker.pickerStyle(.inline).labelsHidden()
+            ForEach(options) { option in
+                Button {
+                    selection = option.value
+                } label: {
+                    HStack {
+                        Text(option.label)
+                        Spacer()
+                        if selection == option.value {
+                            Image(systemName: "checkmark")
+                                .accessibilityHidden(true)
+                        }
+                    }
+                }
+                .accessibilityAddTraits(selection == option.value ? .isSelected : [])
+            }
         } else {
-            picker.pickerStyle(.segmented)
+            Picker(title, selection: $selection) {
+                ForEach(options) { option in
+                    Text(option.label).tag(option.value)
+                }
+            }
+            .pickerStyle(.segmented)
         }
     }
 }
@@ -34,7 +73,6 @@ struct ConnectionsView: View {
     @Bindable var model: AppModel
     @State private var pivot = Pivot.byOutcome
     @State private var showingExplainer = false
-    @Environment(\.dynamicTypeSize) private var typeSize
 
     enum Pivot: Hashable {
         case byOutcome
@@ -81,16 +119,15 @@ struct ConnectionsView: View {
         .task { await model.noteViewedPatterns() }
     }
 
-    @ViewBuilder private var pivotPicker: some View {
-        let picker = Picker("Show", selection: $pivot) {
-            Text("By Outcome").tag(Pivot.byOutcome)
-            Text("By Habit").tag(Pivot.byHabit)
-        }
-        if typeSize.isAccessibilitySize {
-            picker.pickerStyle(.inline).labelsHidden()
-        } else {
-            picker.pickerStyle(.segmented)
-        }
+    private var pivotPicker: some View {
+        ChoiceControl(
+            title: String(localized: "Show"),
+            options: [
+                .init(value: Pivot.byOutcome, label: String(localized: "By Outcome")),
+                .init(value: .byHabit, label: String(localized: "By Habit")),
+            ],
+            selection: $pivot
+        )
     }
 
     private func note(_ board: ConnectionBoard) -> String? {

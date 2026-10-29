@@ -90,6 +90,8 @@ final class VivraUITests: XCTestCase {
                 timeout: 5)
         }
         audit(app, screenshot: "10 Connections, larger text")
+        // So the next test's launch doesn't have to close it.
+        app.terminate()
     }
 
     /// Connections (PLAN Phase 7): by outcome (audited above as "07"), by
