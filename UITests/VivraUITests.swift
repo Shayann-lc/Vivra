@@ -105,11 +105,15 @@ final class VivraUITests: XCTestCase {
         let found = app.buttons.matching(NSPredicate(format: "label CONTAINS ': with '")).firstMatch
         reveal(found, in: app)
         let detail = app.navigationBars["Connection"]
-        tap(found, until: detail, auditing: app, screenshot: nil)
+        // The list was just audited by habit; auditing again mid-scroll can
+        // time out on a slow simulator.
+        tap(found, until: detail, auditing: nil, screenshot: nil)
         audit(app, screenshot: "07d Connection detail")
         app.swipeUp()
         audit(app, screenshot: "07e Connection detail, scrolled")
-        detail.buttons.firstMatch.tap()
+        // Once scrolled, iOS 27 may hide the inline title, so find the back
+        // button in whichever navigation bar is showing.
+        app.navigationBars.buttons.firstMatch.tap()
 
         let summaries = app.buttons["Summaries"]
         for _ in 0..<8 where !(summaries.exists && summaries.isHittable) { app.swipeDown() }

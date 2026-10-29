@@ -72,13 +72,13 @@ public enum ConnectionLabels {
         FindingFormatter.format(value, metric.unit)
     }
 
-    /// "none 7h 10m · any 6h 50m".
+    /// "none: 7h 10m · any: 6h 50m".
     public static func comparison(_ row: ConnectionBoard.Row) -> String? {
         guard let finding = row.status.finding, let comparison = row.comparison, let groups = groups(finding) else {
             return nil
         }
-        return "\(groups.less) \(value(comparison.lessMedian, row.outcome)) · "
-            + "\(groups.more) \(value(comparison.moreMedian, row.outcome))"
+        return "\(groups.less): \(value(comparison.lessMedian, row.outcome)) · "
+            + "\(groups.more): \(value(comparison.moreMedian, row.outcome))"
     }
 
     /// "41 and 32 days · medium confidence".

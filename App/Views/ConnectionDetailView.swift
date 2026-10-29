@@ -28,6 +28,7 @@ struct ConnectionDetailView: View {
                             systemImage: latest.side == .less ? "circle" : "circle.fill"
                         )
                         .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
@@ -103,10 +104,13 @@ private struct GroupColumn: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            // Wraps rather than truncating at larger text sizes.
             Label(label, systemImage: symbol)
                 .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
             Text(value)
                 .font(.title2.bold().monospacedDigit())
+                .fixedSize(horizontal: false, vertical: true)
             Text("\(days) days")
                 .font(.caption)
                 .foregroundStyle(.secondary)

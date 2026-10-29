@@ -18,9 +18,10 @@ struct InsightsSectionPicker: View {
             Text("Connections").tag(InsightsSection.connections)
             Text("Summaries").tag(InsightsSection.summaries)
         }
-        // Segmented controls don't grow with the largest text sizes.
+        // Segmented controls don't grow with the largest text sizes, and a
+        // menu's label can clip; rows with a checkmark can't.
         if typeSize.isAccessibilitySize {
-            picker.pickerStyle(.menu)
+            picker.pickerStyle(.inline)
         } else {
             picker.pickerStyle(.segmented)
         }
@@ -50,7 +51,11 @@ struct ConnectionsView: View {
                     Text(ConnectionLabels.summary(board))
                         .font(.subheadline)
                     pivotPicker
-                    Button("How Connections works", systemImage: "info.circle") { showingExplainer = true }
+                    Button {
+                        showingExplainer = true
+                    } label: {
+                        Label("How Connections works", systemImage: "info.circle")
+                    }
                 } footer: {
                     if let note = note(board) { Text(note) }
                 }
@@ -78,7 +83,7 @@ struct ConnectionsView: View {
             Text("By Habit").tag(Pivot.byHabit)
         }
         if typeSize.isAccessibilitySize {
-            picker.pickerStyle(.menu)
+            picker.pickerStyle(.inline)
         } else {
             picker.pickerStyle(.segmented)
         }

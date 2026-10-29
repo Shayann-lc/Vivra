@@ -189,7 +189,7 @@ import VivraModel
             id: finding.id, behaviour: .metric(.caffeine), outcome: .sleepDuration, lag: 1, status: .found(finding),
             latest: .init(daysAgo: 1, value: 190, side: .more), sortKey: 1)
         #expect(ConnectionLabels.title(row) == "Caffeine and sleep the night after")
-        #expect(ConnectionLabels.comparison(row) == "95 mg or less 7h 27m · 190 mg or more 6h 48m")
+        #expect(ConnectionLabels.comparison(row) == "95 mg or less: 7h 27m · 190 mg or more: 6h 48m")
         #expect(ConnectionLabels.evidence(row) == "28 and 27 days · medium confidence")
         #expect(ConnectionLabels.latest(row.latest!, behaviour: row.behaviour) == "Yesterday 190 mg")
 
@@ -199,7 +199,7 @@ import VivraModel
         let alcoholRow = ConnectionBoard.Row(
             id: none.id, behaviour: .metric(.alcohol), outcome: .heartRateVariability, lag: 1, status: .found(none),
             latest: nil, sortKey: 1)
-        #expect(ConnectionLabels.comparison(alcoholRow) == "none 54 ms · any 44 ms")
+        #expect(ConnectionLabels.comparison(alcoholRow) == "none: 54 ms · any: 44 ms")
         #expect(ConnectionLabels.title(alcoholRow) == "Alcohol and heart rate variability (SDNN) the next day")
 
         let sleepMood = ConnectionBoard.Row(
