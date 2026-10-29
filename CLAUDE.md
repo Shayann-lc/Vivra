@@ -5,12 +5,11 @@ and the definition of done for each phase.
 
 ## Current phase
 
-Phases 0–7 are done in code, with CI green on Xcode 26 and 27 (Phase 7:
-Connections, habits next to outcomes; PLAN §7). The device checks in
-`docs/DEVICE_TEST.md`, the live eval run on a Mac (`evals/README.md`) and the
-decisions in `docs/APP_STORE.md` are with the owner. There is no current phase:
-anything new needs the owner's approval and a definition of done first. The
-research-notes proposal (evidence cards) is proposed as the next phase, not yet approved.
+**Phase 8** (research notes: reviewed evidence cards shown beside summaries) is
+approved and in progress; its definition of done is in PLAN §7. Phases 0–7 are
+done. The device checks in `docs/DEVICE_TEST.md`, the live eval run on a Mac
+(`evals/README.md`) and the decisions in `docs/APP_STORE.md` are with the owner.
+Anything beyond Phase 8 needs the owner's approval and a definition of done first.
 
 ## Hard rules
 
@@ -20,6 +19,9 @@ research-notes proposal (evidence cards) is proposed as the next phase, not yet 
   messages are `StaticString`s. No `print`, `NSLog` or `os.Logger` elsewhere.
 - **The LLM never produces numbers.** All statistics are computed in Swift and
   the model only words them (PLAN §6).
+- **Research notes are written by people, never the model** (PLAN decision 11).
+  Swift picks the card; the model never mentions research. Cards ship in Release
+  builds only after the owner signs them off in `docs/EVIDENCE.md`.
 - **Not medical advice.** Use observational, non-causal and non-judgemental
   language. See `docs/STYLE_GUIDE.md`. `NarrativeCore/StyleGuide.swift` is
   what enforces it, so change both together.

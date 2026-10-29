@@ -1,6 +1,6 @@
 # Vivra — Architecture and Phased Plan
 
-Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–7 are done in code, with CI green on Xcode 26 and 27. The device checks for Phases 1–7 (`docs/DEVICE_TEST.md`), the live eval run on the owner's Mac (`evals/README.md`) and the App Store decisions (`docs/APP_STORE.md`) are pending with the owner.
+Status: **approved** (all of §11, with bundle ID and team as placeholders until signing). Phases 0–7 are done in code, with CI green on Xcode 26 and 27. Phase 8 (research notes) is approved and in progress. The device checks for Phases 1–7 (`docs/DEVICE_TEST.md`), the live eval run on the owner's Mac (`evals/README.md`) and the App Store decisions (`docs/APP_STORE.md`) are pending with the owner.
 
 ## 1. Decisions already made
 
@@ -16,6 +16,7 @@ Status: **approved** (all of §11, with bundle ID and team as placeholders until
 | 8 | Workout routes | **Not read or stored** in Phase 2 (owner, Phase 2 kickoff). GPS traces are the most sensitive data Vivra could hold, and nothing uses them yet. Revisit with a feature that needs them. |
 | 10 | VO2 max norms | **Every build:** Vivra points to Apple Health's Cardio Fitness levels (FRIEND-based) and ships no VO2 max table. **The owner's own non-commercial build** (`VIVRA_NONCOMMERCIAL`) also shows FRIEND 2015 treadmill medians, with citation (owner, Phase 4 kickoff). Licensing details are in `docs/NORMS.md`. |
 | 9 | Quick-log entry points | Widgets, controls and Shortcuts **open the app** at the Quick Log screen (owner, Phase 2 kickoff). **Amended in Phase 6** (owner): the Daily Summary widget shows today's check-in headline and first two sentences, from a file the app writes to an App Group container only while that widget is installed. The extension still has no database access and no shared Keychain item. |
+| 11 | Research notes | Short, reviewed summaries of published studies about groups of people ("evidence cards") ship inside the app with citations (owner, Phase 8 kickoff). **Swift picks the card, never the model**, and the card's text is shown word for word beside the model's sentence; the model never writes about research, and the validator rejects research language in model text. A card is shown in Release builds only after the owner signs it off (`docs/EVIDENCE.md`). |
 
 ## 2. Principles, restated as engineering rules
 
@@ -512,6 +513,74 @@ Swift Charts only. Group identity is carried by shape and label, never colour al
    performance target (board under 150 ms for 90 days on a recent iPhone, checked
    on device) and CLAUDE.md.
 9. **CI:** green on Xcode 26 and Xcode 27.
+
+### Phase 8 — Research notes
+
+Status: **approved and in progress** (owner, after the Phase 7 report). The owner asked
+how to distil scientific articles into knowledge the on-device summaries can use; the
+research and design are in the approved proposal ("research notes"), and the owner
+accepted every recommended answer below.
+
+**What it is.** A small set of evidence cards, each a statement in our own words about
+what studies found in groups of people, with its population, caveats, strength,
+licence and full citation. Cards are Swift constants (like `BundledNorms`) keyed to the
+engine's checks, so lookup is exact and deterministic. When a person's own pattern
+(medium or high confidence) matches a card, the card is shown under that pattern's
+sentence as "Research · groups of people", with a Sources sheet.
+
+**Decisions (owner, all as recommended)**
+1. **Approach A:** the note is shown beside the model's text; the model sees nothing
+   about research and gets one instruction not to mention research, studies or
+   experts. (Giving the model the card as context is a possible later experiment.)
+2. **Style guide:** research notes are a new kind of text with their own lint rules,
+   and research language is banned in model text. `STYLE_GUIDE.md` and
+   `StyleGuide.swift` change together.
+3. **Numbers:** card statements contain no digits; doses and times are written in
+   words as reviewed constants. Study sizes and similar details appear only in the
+   Sources sheet as citation details. No card text passes through the model.
+4. **Disagreement:** when the person's data goes the opposite way to the research,
+   the summary shows no note; the pattern's detail (Connections) shows the research
+   with "People vary, and findings about groups don't apply to everyone."
+5. **Review:** cards may be drafted with AI help at a desk, never on device, and
+   every claim is checked against its source. A card becomes `ready` only when the
+   owner (optionally with a qualified reviewer) signs it off in `docs/EVIDENCE.md`.
+   Release builds show `ready` cards only; Debug builds also show drafts, labelled
+   "Draft, not yet reviewed", so the owner can review them in context.
+6. **Sensitive topics:** step counts and depression, and illness signals, are
+   excluded; the menstrual-cycle temperature card is held (not shown) until the
+   owner decides.
+7. **New metrics** the research points to (REM sleep, sleep regularity, meal timing)
+   are separate work.
+
+**Where notes appear.** Under pattern sentences in the daily check-in, weekly and
+monthly summaries (at most three per summary); in a connection's detail; and "What
+research says" in metric detail for background cards. Never on Today, in the widget,
+or in "Why do I feel off today?", where a research line could read as a reason.
+
+**Definition of done**
+1. **Engine (Linux tests):** an `Evidence` module with the card types, the bundled
+   cards, the matcher and its policy. Tests cover every key type, agreement, the
+   confidence gate, the cap of three, the report kinds without notes, and status
+   gating (Release shows `ready` only). Every catalogue check has at least one card.
+2. **Cards:** at least 20 drafted cards covering every catalogue check, each source's
+   citation checked against Crossref and PubMed, and each statement checked against
+   at least the abstract; card lint (no digits, no "you", no banned, causal or
+   effect words, starts by naming the evidence, 45 words or fewer, caveats, sources
+   with a DOI or URL, licence recorded). All registered in `docs/EVIDENCE.md` with a
+   sign-off checklist for the owner. Exclusions and held cards are recorded.
+3. **Narrative:** `ComposedSummary.notes`, decoded so saved reports still load; the
+   validator rejects research language; one line added to the model instructions;
+   `StyleGuide.swift` and `STYLE_GUIDE.md` in the same commit.
+4. **Evals:** new cases and the `researchClaims` and `notes` scorers, each with a
+   test that catches a bad output; templates still score 100%.
+5. **App:** notes and the Sources sheet in Insights summaries; research in a
+   connection's detail (with the disagreement wording); "What research says" in metric
+   detail; nothing on Today, the widget or feeling-off; the accessibility audit
+   passes.
+6. **Docs:** this section and decision 11, `docs/EVIDENCE.md`, `STYLE_GUIDE.md`,
+   `APP_STORE.md` review notes, Phase 8 device steps, and twenty sentence-and-note
+   pairs listed for the owner's read-through.
+7. **CI:** green on Xcode 26 and Xcode 27; the guard script is unchanged and passes.
 
 ## 8. Strava — what the terms say and my recommendation
 
