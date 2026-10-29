@@ -251,8 +251,9 @@ final class VivraUITests: XCTestCase {
 
     private func audit(_ app: XCUIApplication, for types: XCUIAccessibilityAuditType, fadedBars: [CGRect]) {
         // A screen that's still updating can make the audit time out (code
-        // -56). Give it a moment and try once more before failing.
-        for attempt in 1...2 {
+        // -56), more so on a slow CI simulator. Give it a few seconds and try
+        // up to twice more before failing.
+        for attempt in 1...3 {
             do {
                 try app.performAccessibilityAudit(for: types) { issue in
                     // Every issue is named in the test log with its element,
@@ -266,8 +267,8 @@ final class VivraUITests: XCTestCase {
                     return reason != nil
                 }
                 return
-            } catch let error as NSError where error.code == Self.auditTimedOut && attempt == 1 {
-                _ = XCTWaiter.wait(for: [XCTestExpectation(description: "Let the screen settle")], timeout: 3)
+            } catch let error as NSError where error.code == Self.auditTimedOut && attempt < 3 {
+                _ = XCTWaiter.wait(for: [XCTestExpectation(description: "Let the screen settle")], timeout: 5)
             } catch {
                 XCTFail("Accessibility audit could not run: \(error)")
                 return

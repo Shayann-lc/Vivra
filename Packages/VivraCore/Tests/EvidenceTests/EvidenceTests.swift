@@ -62,10 +62,13 @@ enum Make {
     }
 
     @Test func mixedResearchIsShownEitherWay() {
-        for (low, high) in [(7 * 3600.0, 6.5 * 3600), (6.5 * 3600, 7 * 3600)] {
-            let finding = Make.correlation(.alcohol, .sleepDuration, lag: 1, low: low, high: high)
-            let notes = EvidenceMatcher.notes(for: [finding], kind: .weekly, library: drafts)
-            #expect(notes.map(\.agreement) == [.researchMixed])
+        let hour: Double = 3600
+        let pairs: [(low: Double, high: Double)] = [(7 * hour, 6.5 * hour), (6.5 * hour, 7 * hour)]
+        for pair in pairs {
+            let finding = Make.correlation(.alcohol, .sleepDuration, lag: 1, low: pair.low, high: pair.high)
+            let notes: [ResearchNote] = EvidenceMatcher.notes(for: [finding], kind: .weekly, library: drafts)
+            let agreements: [EvidenceAgreement] = notes.map { $0.agreement }
+            #expect(agreements == [EvidenceAgreement.researchMixed])
         }
     }
 
