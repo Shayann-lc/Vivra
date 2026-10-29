@@ -47,10 +47,14 @@ struct ConnectionsView: View {
                 InsightsSectionPicker(selection: $model.insightsSection)
             }
             if let board = model.connections {
+                // In a section of its own, like the Insights picker: at the
+                // largest text sizes its rows then lay out like any other.
+                Section {
+                    pivotPicker
+                }
                 Section {
                     Text(ConnectionLabels.summary(board))
                         .font(.subheadline)
-                    pivotPicker
                     Button {
                         showingExplainer = true
                     } label: {
