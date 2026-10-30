@@ -39,8 +39,10 @@ public struct ComposedSummary: Codable, Sendable, Equatable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        draft = try container.decode(NarrativeDraft.self, forKey: .draft)
         generator = try container.decode(NarrativeGenerator.self, forKey: .generator)
+        // Model summaries saved before formatting marks were removed.
+        let draft = try container.decode(NarrativeDraft.self, forKey: .draft)
+        self.draft = generator == .onDeviceModel ? PlainText.clean(draft) : draft
         findings = try container.decode([Finding].self, forKey: .findings)
         notes = try container.decodeIfPresent([ResearchNote].self, forKey: .notes) ?? []
     }
@@ -78,7 +80,8 @@ public enum SummaryComposer {
         var corrections: [NarrativeViolation] = []
         for attempt in 1...2 {
             do {
-                let draft = try await narrator.draft(kind: report.kind, findings: findings, corrections: corrections)
+                let draft = PlainText.clean(
+                    try await narrator.draft(kind: report.kind, findings: findings, corrections: corrections))
                 let violations = NarrativeValidator.validate(draft, findings: findings)
                 if violations.isEmpty {
                     return ComposedSummary(draft: draft, generator: .onDeviceModel, findings: findings, notes: notes)

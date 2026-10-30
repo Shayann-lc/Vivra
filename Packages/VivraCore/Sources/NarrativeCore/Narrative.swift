@@ -31,6 +31,8 @@ public enum NarrativeViolation: Sendable, Equatable, CustomStringConvertible {
     case causalLanguage(String)
     /// Research language, which only reviewed research notes may use.
     case researchClaim(String)
+    /// Formatting marks (Markdown, LaTeX): the app shows plain text.
+    case markup(String)
 
     /// Written to be fed back to the model in a retry.
     public var description: String {
@@ -49,6 +51,8 @@ public enum NarrativeViolation: Sendable, Equatable, CustomStringConvertible {
             "\"\(phrase)\" implies cause and effect, which is not allowed."
         case .researchClaim(let phrase):
             "\"\(phrase)\" mentions research. Describe only the person's own data."
+        case .markup(let mark):
+            "\"\(mark)\" is a formatting mark. Write plain sentences, without Markdown or LaTeX."
         }
     }
 }
@@ -91,6 +95,9 @@ public enum NarrativeValidator {
         }
         for phrase in StyleGuide.researchPhrases where containsPhrase(phrase, in: allText) {
             violations.append(.researchClaim(phrase))
+        }
+        for mark in StyleGuide.markupCharacters where allText.contains(mark) {
+            violations.append(.markup(String(mark)))
         }
         return violations
     }
@@ -148,5 +155,31 @@ public enum NarrativeValidator {
     private static func isWordCharacter(_ character: Character?) -> Bool {
         guard let character else { return false }
         return character.isLetter || character.isNumber || character == "'" || character == "’"
+    }
+}
+
+/// The model sometimes formats numbers as maths ("$6h$ $48m$") or adds
+/// Markdown. The app shows plain text, so these marks are removed before a
+/// draft is checked; anything left is rejected by the validator.
+public enum PlainText {
+    /// Marks removed outright. None of them carries meaning in a sentence.
+    static let removed: [String] = ["$", "**", "__", "`", "\\(", "\\)", "\\[", "\\]"]
+
+    public static func clean(_ text: String) -> String {
+        var result = text
+        for mark in removed {
+            result = result.replacingOccurrences(of: mark, with: "")
+        }
+        while result.contains("  ") {
+            result = result.replacingOccurrences(of: "  ", with: " ")
+        }
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public static func clean(_ draft: NarrativeDraft) -> NarrativeDraft {
+        NarrativeDraft(
+            headline: clean(draft.headline),
+            bullets: draft.bullets.map { .init(findingID: $0.findingID, text: clean($0.text)) }
+        )
     }
 }

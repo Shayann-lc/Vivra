@@ -62,6 +62,11 @@ There are no good or bad days, nights or weeks.
 - Only numbers the insight engine calculated may appear. The model is given each finding
   as a sentence and may only reuse its numbers. It may also state the size of a reported
   difference, which the validator allows.
+- **Plain text only.** No Markdown, LaTeX or dollar signs: the on-device model sometimes
+  writes numbers as maths ("$6h$ $48m$"). `PlainText` removes dollar signs and Markdown
+  emphasis from model drafts before they're checked, and the validator rejects any
+  formatting mark left (`StyleGuide.markupCharacters`), so the model retries or the
+  template is shown.
 - Formats (from `FindingFormatter`):
 
   | Quantity | Format | Example |

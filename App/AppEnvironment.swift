@@ -77,22 +77,34 @@ struct SystemClock: Clock {
     extension AppEnvironment {
         /// The launch argument UI tests pass.
         static let uiTestingArgument = "-ui-testing"
-        /// Added to `-ui-testing` to start with 90 days of made-up data.
+        /// 90 days of made-up data. With `-ui-testing` the language model is
+        /// off (for the UI tests); on its own, Apple Intelligence writes the
+        /// summaries when it's available, so its wording can be tried out.
         static let sampleDataArgument = "-sample-data"
 
         /// For UI tests: fresh storage on every launch, no HealthKit prompts,
         /// no language model and no notifications. Debug builds only.
         static func uiTesting(sampleData: Bool) -> AppEnvironment {
-            let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
-                "UITesting", isDirectory: true)
+            fresh(named: "UITesting", sampleData: sampleData, usesModel: false)
+        }
+
+        /// For trying Apple Intelligence on made-up data: fresh storage with
+        /// sample data on every launch, no HealthKit and no notifications, and
+        /// the on-device model when it's available. Debug builds only.
+        static var sampleDataWithModel: AppEnvironment {
+            fresh(named: "SampleData", sampleData: true, usesModel: true)
+        }
+
+        private static func fresh(named name: String, sampleData: Bool, usesModel: Bool) -> AppEnvironment {
+            let directory = FileManager.default.temporaryDirectory.appendingPathComponent(name, isDirectory: true)
             try? FileManager.default.removeItem(at: directory)
             return AppEnvironment(
                 storeDirectory: { directory },
-                keychainService: "app.vivra.uitesting.database-key",
+                keychainService: "app.vivra.\(name.lowercased()).database-key",
                 health: nil,
                 clock: SystemClock(),
                 calendar: { DayCalendar(Calendar.autoupdatingCurrent) },
-                makeNarrator: { nil },
+                makeNarrator: { usesModel && FoundationModelsNarrator.isAvailable ? FoundationModelsNarrator() : nil },
                 ownBundleIdentifier: Bundle.main.bundleIdentifier,
                 reminders: nil,
                 loadsSampleData: sampleData

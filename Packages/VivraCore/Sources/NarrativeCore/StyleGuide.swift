@@ -40,6 +40,11 @@ public enum StyleGuide {
     /// they hint at cause.
     public static let researchNoteAvoids: [String] = ["effect", "effects", "effective", "effectively"]
 
+    /// Formatting marks the model may not use: the app shows plain text.
+    /// `PlainText` removes dollar signs and Markdown emphasis first; any of
+    /// these left after that is a violation.
+    public static let markupCharacters: [Character] = ["$", "*", "#", "`", "\\"]
+
     /// System instructions for every model session.
     public static let modelInstructions = """
         You write short summaries of a person's own health data for a lifestyle app.
@@ -59,5 +64,7 @@ public enum StyleGuide {
         - Keep a calm, neutral and encouraging tone. Address the reader as "you".
         - Write one sentence per finding.
         - Don't mention research, studies or experts.
+        - Write plain sentences. Don't use Markdown, LaTeX or dollar signs, \
+        and write numbers exactly as they appear in the findings.
         """
 }

@@ -181,16 +181,19 @@ final class AppModel {
         AppModel(environment: .live, defaults: .standard, defaultsDomain: Bundle.main.bundleIdentifier)
     }
 
-    /// The live model, or in a Debug build launched by the UI tests, one with
-    /// fresh storage and preferences.
+    /// The live model, or in a Debug build launched with `-ui-testing` or
+    /// `-sample-data`, one with fresh storage and preferences.
     static func forLaunch(arguments: [String] = ProcessInfo.processInfo.arguments) -> AppModel {
         #if DEBUG
-            if arguments.contains(AppEnvironment.uiTestingArgument) {
-                let suiteName = "app.vivra.uitesting"
+            let uiTesting = arguments.contains(AppEnvironment.uiTestingArgument)
+            let sampleData = arguments.contains(AppEnvironment.sampleDataArgument)
+            if uiTesting || sampleData {
+                let suiteName = uiTesting ? "app.vivra.uitesting" : "app.vivra.sampledata"
                 UserDefaults().removePersistentDomain(forName: suiteName)
                 if let defaults = UserDefaults(suiteName: suiteName) {
-                    let environment = AppEnvironment.uiTesting(
-                        sampleData: arguments.contains(AppEnvironment.sampleDataArgument))
+                    let environment =
+                        uiTesting
+                        ? AppEnvironment.uiTesting(sampleData: sampleData) : AppEnvironment.sampleDataWithModel
                     return AppModel(environment: environment, defaults: defaults, defaultsDomain: suiteName)
                 }
             }

@@ -313,6 +313,15 @@ Use a phone with at least a few weeks of Health data and some Quick Log entries.
 
 1. Follow `docs/PERFORMANCE.md` §6.
 
+# Trying Apple Intelligence on sample data
+
+In a Debug build (Xcode › Product › Scheme › Edit Scheme › Run › Arguments), add
+`-sample-data` **without** `-ui-testing`. Each launch starts fresh with 90 days of
+made-up data, no HealthKit and no notifications, and Apple Intelligence writes the
+summaries when it's on (the note under a summary says "Written on this iPhone by
+Apple Intelligence"). With `-ui-testing` as well, the model is off, as the UI tests
+need. Untick both to see your own data again.
+
 # Phase 8 device steps
 
 Run from Xcode (a Debug build), which shows draft research notes labelled "Draft, not
